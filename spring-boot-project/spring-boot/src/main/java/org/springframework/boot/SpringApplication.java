@@ -300,6 +300,8 @@ public class SpringApplication {
 		stopWatch.start();
 		ConfigurableApplicationContext context = null;
 		configureHeadlessProperty();
+		// 获取spring应用的运行监听器，从spring.factories中获取，默认只有一个EventPublishingRunListener，
+		// 用于将spring应用启动中的事件推送给各个ApplicationListener(已经在SpringApplication的构造函数中从spring.factories中获取了)
 		SpringApplicationRunListeners listeners = getRunListeners(args);
 		listeners.starting();
 		try {
