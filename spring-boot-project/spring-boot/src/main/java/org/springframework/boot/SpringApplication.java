@@ -305,7 +305,11 @@ public class SpringApplication {
 		SpringApplicationRunListeners listeners = getRunListeners(args);
 		listeners.starting();
 		try {
+			// 根据启动时传入的参数生成一个DefaultApplicationArguments对象，
+			// 该对象持有一个SimpleCommandLinePropertySource的子类Source，
+			// propertySource中持有一个CommandLineArgs对象，里面包含了所有命令行参数的解析结果
 			ApplicationArguments applicationArguments = new DefaultApplicationArguments(args);
+			// 准备环境变量enviroment，并且通过listener发送通知，推送事件
 			ConfigurableEnvironment environment = prepareEnvironment(listeners, applicationArguments);
 			configureIgnoreBeanInfo(environment);
 			Banner printedBanner = printBanner(environment);
@@ -338,7 +342,13 @@ public class SpringApplication {
 	private ConfigurableEnvironment prepareEnvironment(SpringApplicationRunListeners listeners,
 			ApplicationArguments applicationArguments) {
 		// Create and configure the environment
+		// 创建环境对象environment，如果是sevlet应用，创建的是StandardServletEnvironment
+		// enviroment对象会持有所有的propertySource，在AbstractEnviroment的构造方法中会调用customizePropertySources方法，
+		// 该方法会初始化一系列的propertySource放入enviroment中，其中就包括System.getProperties()和System.getEnv(),
+		// 分别会初始化为PropertiesPropertySource以及SystemEnvironmentPropertySource；
+		// servlet相关的servletContextInitParams和servletConfigInitParams也会创建相关的PropertySource来保存
 		ConfigurableEnvironment environment = getOrCreateEnvironment();
+		// 将启动时的命令行参数转换为propertySource保存进environment中；并且会解析命令行参数中存在的profile信息，保存进environment
 		configureEnvironment(environment, applicationArguments.getSourceArgs());
 		ConfigurationPropertySources.attach(environment);
 		listeners.environmentPrepared(environment);
@@ -474,7 +484,12 @@ public class SpringApplication {
 	 */
 	protected void configureEnvironment(ConfigurableEnvironment environment, String[] args) {
 		if (this.addConversionService) {
+			// 获取单例的ApplicationConversionService
 			ConversionService conversionService = ApplicationConversionService.getSharedInstance();
+			// 将conversionService设置进environment的PropertySourcePropertyResolver中，
+			// AbstractEnvironment实现了ConfigurationEnvironment接口，
+			// ConfigurationEnvironment又继承了ConfigurationPropertyResolver接口，
+			// environment中实例化了一个PropertySourcePropertyResolver用代理模式来实现了ConfigurationPropertyResolver接口的方法
 			environment.setConversionService((ConfigurableConversionService) conversionService);
 		}
 		configurePropertySources(environment, args);

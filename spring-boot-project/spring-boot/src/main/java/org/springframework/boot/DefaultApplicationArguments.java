@@ -39,6 +39,7 @@ public class DefaultApplicationArguments implements ApplicationArguments {
 
 	public DefaultApplicationArguments(String... args) {
 		Assert.notNull(args, "Args must not be null");
+		// 将启动参数传入Source的构造方法，Source是继承于SimpleCommandLinePropertySource
 		this.source = new Source(args);
 		this.args = args;
 	}
