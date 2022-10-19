@@ -309,7 +309,7 @@ public class SpringApplication {
 			// 该对象持有一个SimpleCommandLinePropertySource的子类Source，
 			// propertySource中持有一个CommandLineArgs对象，里面包含了所有命令行参数的解析结果
 			ApplicationArguments applicationArguments = new DefaultApplicationArguments(args);
-			// 准备环境变量enviroment，并且通过listener发送通知，推送事件
+			// 准备环境变量environment，并且通过listener发送通知，推送事件
 			ConfigurableEnvironment environment = prepareEnvironment(listeners, applicationArguments);
 			configureIgnoreBeanInfo(environment);
 			Banner printedBanner = printBanner(environment);
@@ -343,8 +343,8 @@ public class SpringApplication {
 			ApplicationArguments applicationArguments) {
 		// Create and configure the environment
 		// 创建环境对象environment，如果是sevlet应用，创建的是StandardServletEnvironment
-		// enviroment对象会持有所有的propertySource，在AbstractEnviroment的构造方法中会调用customizePropertySources方法，
-		// 该方法会初始化一系列的propertySource放入enviroment中，其中就包括System.getProperties()和System.getEnv(),
+		// environment对象会持有所有的propertySource，在AbstractEnvironment的构造方法中会调用customizePropertySources方法，
+		// 该方法会初始化一系列的propertySource放入environment中，其中就包括System.getProperties()和System.getEnv(),
 		// 分别会初始化为PropertiesPropertySource以及SystemEnvironmentPropertySource；
 		// servlet相关的servletContextInitParams和servletConfigInitParams也会创建相关的PropertySource来保存
 		ConfigurableEnvironment environment = getOrCreateEnvironment();
@@ -492,7 +492,9 @@ public class SpringApplication {
 			// environment中实例化了一个PropertySourcePropertyResolver用代理模式来实现了ConfigurationPropertyResolver接口的方法
 			environment.setConversionService((ConfigurableConversionService) conversionService);
 		}
+		// 根据命令行参数配置propertySource
 		configurePropertySources(environment, args);
+		// 根据命令行参数配置profiles
 		configureProfiles(environment, args);
 	}
 
@@ -505,11 +507,17 @@ public class SpringApplication {
 	 */
 	protected void configurePropertySources(ConfigurableEnvironment environment, String[] args) {
 		MutablePropertySources sources = environment.getPropertySources();
+		// 如果SpringApplication的defaultProperties不为空，那么创建一个MapPropertySource，保存进environment的MutablePropertySources中
 		if (this.defaultProperties != null && !this.defaultProperties.isEmpty()) {
 			sources.addLast(new MapPropertySource("defaultProperties", this.defaultProperties));
 		}
+		// 如果addCommandLineProperties这个属性为true(默认为true)，并且存在命令行参数
 		if (this.addCommandLineProperties && args.length > 0) {
 			String name = CommandLinePropertySource.COMMAND_LINE_PROPERTY_SOURCE_NAME;
+			// 如果environment中之前存在名为commandLineArgs的propertySource，
+			// 那么创建一个名为commandLineArgs的CompositePropertySource，用于将之前存在的propertySource和
+			// 根据命令行新建的propertySource组合起来(新建的propertySource名为springApplicationCommandLineArgs)
+			// 一起存入environment中
 			if (sources.contains(name)) {
 				PropertySource<?> source = sources.get(name);
 				CompositePropertySource composite = new CompositePropertySource(name);
@@ -518,6 +526,9 @@ public class SpringApplication {
 				composite.addPropertySource(source);
 				sources.replace(name, composite);
 			}
+			// 如果environment中之前不存在名为commandLineArgs的propertySource，
+			// 那么根据命令行参数新建一个加入到MutablePropertySources的第一个。
+			// 新建的SimpleCommandLinePropertySource的默认名称为commandLineArgs
 			else {
 				sources.addFirst(new SimpleCommandLinePropertySource(args));
 			}
@@ -534,8 +545,11 @@ public class SpringApplication {
 	 * @see org.springframework.boot.context.config.ConfigFileApplicationListener
 	 */
 	protected void configureProfiles(ConfigurableEnvironment environment, String[] args) {
+		// 创建一个set先将springApplication的additionalProfiles(附加的配置)字段添加进set
 		Set<String> profiles = new LinkedHashSet<>(this.additionalProfiles);
+		// 从environment对象中获取到激活的profiles添加到set中
 		profiles.addAll(Arrays.asList(environment.getActiveProfiles()));
+		// 然后将set转换成数组调用environment的setActiveProfiles方法设置激活的profiles
 		environment.setActiveProfiles(StringUtils.toStringArray(profiles));
 	}
 
