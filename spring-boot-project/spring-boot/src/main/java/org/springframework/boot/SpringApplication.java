@@ -348,8 +348,10 @@ public class SpringApplication {
 		// 分别会初始化为PropertiesPropertySource以及SystemEnvironmentPropertySource；
 		// servlet相关的servletContextInitParams和servletConfigInitParams也会创建相关的PropertySource来保存
 		ConfigurableEnvironment environment = getOrCreateEnvironment();
-		// 将启动时的命令行参数转换为propertySource保存进environment中；并且会解析命令行参数中存在的profile信息，保存进environment
+		// 将启动时的命令行参数转换为propertySource保存进environment中；
+		// 并且会解析propertySources中存在的activeProfile信息，保存进environment
 		configureEnvironment(environment, applicationArguments.getSourceArgs());
+		//
 		ConfigurationPropertySources.attach(environment);
 		listeners.environmentPrepared(environment);
 		bindToSpringApplication(environment);
