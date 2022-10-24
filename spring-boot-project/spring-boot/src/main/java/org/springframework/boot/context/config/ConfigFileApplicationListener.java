@@ -187,29 +187,37 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 
 	@Override
 	public void onApplicationEvent(ApplicationEvent event) {
+		// 当事件类型是ApplicationEnvironmentPreparedEvent时
 		if (event instanceof ApplicationEnvironmentPreparedEvent) {
 			onApplicationEnvironmentPreparedEvent((ApplicationEnvironmentPreparedEvent) event);
 		}
+		// 当事件类型时ApplicationPreparedEvent时
 		if (event instanceof ApplicationPreparedEvent) {
 			onApplicationPreparedEvent(event);
 		}
 	}
 
 	private void onApplicationEnvironmentPreparedEvent(ApplicationEnvironmentPreparedEvent event) {
+		// 从spring.factories中加载EnvironmentPostProcessor
 		List<EnvironmentPostProcessor> postProcessors = loadPostProcessors();
+		// 并且将自身也加入到postProcessor集合中，因为自身也实现了EnvironmentPostProcessor接口
 		postProcessors.add(this);
+		// 按照PriorityOrdered或Ordered接口或者@Order以及@Priority注解中的order值进行排序
 		AnnotationAwareOrderComparator.sort(postProcessors);
 		for (EnvironmentPostProcessor postProcessor : postProcessors) {
+			// 调用每个环境后置处理器的postProcessEnvironment方法，对environment进行增强
 			postProcessor.postProcessEnvironment(event.getEnvironment(), event.getSpringApplication());
 		}
 	}
 
 	List<EnvironmentPostProcessor> loadPostProcessors() {
+		// 调用SpringFactoriesLoader的loadFactories方法
 		return SpringFactoriesLoader.loadFactories(EnvironmentPostProcessor.class, getClass().getClassLoader());
 	}
 
 	@Override
 	public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
+		// 添加一系列的propertySource进environment
 		addPropertySources(environment, application.getResourceLoader());
 	}
 
@@ -225,7 +233,9 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 	 * @see #addPostProcessors(ConfigurableApplicationContext)
 	 */
 	protected void addPropertySources(ConfigurableEnvironment environment, ResourceLoader resourceLoader) {
+		// 添加一个name为random的RandomValuePropertySource到environment中，并且排在systemEnvironmentPropertySource后面
 		RandomValuePropertySource.addToEnvironment(environment);
+		// 创建一个加载器去加载SpringBoot的配置文件
 		new Loader(environment, resourceLoader).load();
 	}
 
@@ -327,14 +337,23 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 		private Map<DocumentsCacheKey, List<Document>> loadDocumentsCache = new HashMap<>();
 
 		Loader(ConfigurableEnvironment environment, ResourceLoader resourceLoader) {
+			// 将environment对象赋值
 			this.environment = environment;
+			// 初始化一个PropertySourcesPlaceholdersResolver
 			this.placeholdersResolver = new PropertySourcesPlaceholdersResolver(this.environment);
+			// 如果传入的resourceLoader为null，初始化一个DefaultResourceLoader
 			this.resourceLoader = (resourceLoader != null) ? resourceLoader : new DefaultResourceLoader(null);
+			// 从spring.factories中加载PropertySourceLoader
+			//默认存在PropertiesPropertySourceLoader和YamlPropertySourceLoader
 			this.propertySourceLoaders = SpringFactoriesLoader.loadFactories(PropertySourceLoader.class,
 					getClass().getClassLoader());
 		}
 
 		void load() {
+			// 第一个参数为environment对象，
+			// 第二个参数为defaultProperties，
+			// 第三个参数为一个set，默认初始化为spring.profiles.active以及spring.profiles.include
+			// 第四个参数为一个consumer的函数式接口
 			FilteredPropertySource.apply(this.environment, DEFAULT_PROPERTIES, LOAD_FILTERED_PROPERTY,
 					(defaultProperties) -> {
 						this.profiles = new LinkedList<>();

@@ -46,7 +46,9 @@ public class PropertySourcesPlaceholdersResolver implements PlaceholdersResolver
 	}
 
 	public PropertySourcesPlaceholdersResolver(Iterable<PropertySource<?>> sources, PropertyPlaceholderHelper helper) {
+		// 将environment的propertySources放入
 		this.sources = sources;
+		// 初始化一个忽略无法解析的占位符参数为true的PropertyPlaceHolderHelper
 		this.helper = (helper != null) ? helper : new PropertyPlaceholderHelper(SystemPropertyUtils.PLACEHOLDER_PREFIX,
 				SystemPropertyUtils.PLACEHOLDER_SUFFIX, SystemPropertyUtils.VALUE_SEPARATOR, true);
 	}

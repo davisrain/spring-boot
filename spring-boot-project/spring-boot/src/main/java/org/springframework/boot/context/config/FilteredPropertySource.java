@@ -48,17 +48,24 @@ class FilteredPropertySource extends PropertySource<PropertySource<?>> {
 
 	static void apply(ConfigurableEnvironment environment, String propertySourceName, Set<String> filteredProperties,
 			Consumer<PropertySource<?>> operation) {
+		// 拿到environment中的propertySources
 		MutablePropertySources propertySources = environment.getPropertySources();
+		// 判断propertySources中是否有name为该参数的propertySource
 		PropertySource<?> original = propertySources.get(propertySourceName);
 		if (original == null) {
+			// 如果没有，调用consumer的accept方法
 			operation.accept(null);
 			return;
 		}
+		// 如果存在，初始化一个FilteredPropertySource来将原propertySource进行替换，
+		// FilterPropertySource相当于原propertySource的一个装饰器，多添加了set类型的filteredProperties属性
 		propertySources.replace(propertySourceName, new FilteredPropertySource(original, filteredProperties));
 		try {
+			// 然后调用consumer的accept方法，参数为原始的propertySource
 			operation.accept(original);
 		}
 		finally {
+			// 最后使用原来的propertySource将propertySources中的内容替换回来
 			propertySources.replace(propertySourceName, original);
 		}
 	}

@@ -351,8 +351,13 @@ public class SpringApplication {
 		// 将启动时的命令行参数转换为propertySource保存进environment中；
 		// 并且会解析propertySources中存在的activeProfile信息，保存进environment
 		configureEnvironment(environment, applicationArguments.getSourceArgs());
-		//
+		// 在environment的propertySources中的第一个位置
+		// 加入一个name为configurationProperties的ConfigurationPropertySourcesPropertySource，
+		// 其中source为environment的propertySources的包装对象SpringConfigurationPropertySources
 		ConfigurationPropertySources.attach(environment);
+		// 调用监听器通知环境准备完成，其中事件推送多播器会生成环境准备完成的事件通知给各个applicationListener。
+		// 其中最重要的一个applicationListener就是ConfigFileApplicationListener，
+		// 该listener会去加载SpringBoot的配置文件
 		listeners.environmentPrepared(environment);
 		bindToSpringApplication(environment);
 		if (!this.isCustomEnvironment) {
