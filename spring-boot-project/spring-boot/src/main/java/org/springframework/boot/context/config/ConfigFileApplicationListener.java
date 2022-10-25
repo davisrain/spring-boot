@@ -385,7 +385,9 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 			// The default profile for these purposes is represented as null. We add it
 			// first so that it is processed first and has lowest priority.
 			this.profiles.add(null);
+			// 根据environment创建一个binder对象
 			Binder binder = Binder.get(this.environment);
+			// 根据参数spring.profiles.active从binder中获取激活的profiles
 			Set<Profile> activatedViaProperty = getProfiles(binder, ACTIVE_PROFILES_PROPERTY);
 			Set<Profile> includedViaProperty = getProfiles(binder, INCLUDE_PROFILES_PROPERTY);
 			List<Profile> otherActiveProfiles = getOtherActiveProfiles(activatedViaProperty, includedViaProperty);

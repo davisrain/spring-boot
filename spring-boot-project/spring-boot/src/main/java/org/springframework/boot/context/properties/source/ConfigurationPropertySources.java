@@ -97,13 +97,18 @@ public final class ConfigurationPropertySources {
 	 * attached
 	 */
 	public static Iterable<ConfigurationPropertySource> get(Environment environment) {
+		// 判断environment是否是ConfigurationEnvironment
 		Assert.isInstanceOf(ConfigurableEnvironment.class, environment);
+		// 拿到environment中的propertySources
 		MutablePropertySources sources = ((ConfigurableEnvironment) environment).getPropertySources();
+		// 查找propertySources中是否有name为configurationProperties的PropertySource
 		ConfigurationPropertySourcesPropertySource attached = (ConfigurationPropertySourcesPropertySource) sources
 				.get(ATTACHED_PROPERTY_SOURCE_NAME);
 		if (attached == null) {
+			// 如果不存在的话，调用from方法，包装sources进行返回
 			return from(sources);
 		}
+		// 如果存在的话，返回它的source，是SpringConfigurationPropertySources类型，实现了Iterable<ConfigurationPropertySource>接口
 		return attached.getSource();
 	}
 
@@ -132,6 +137,7 @@ public final class ConfigurationPropertySources {
 	 * {@link SpringConfigurationPropertySource} instances
 	 */
 	public static Iterable<ConfigurationPropertySource> from(Iterable<PropertySource<?>> sources) {
+		// 创建一个SpringConfigurationPropertySources
 		return new SpringConfigurationPropertySources(sources);
 	}
 

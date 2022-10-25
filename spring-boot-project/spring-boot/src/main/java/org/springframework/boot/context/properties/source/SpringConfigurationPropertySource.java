@@ -143,17 +143,24 @@ class SpringConfigurationPropertySource implements ConfigurationPropertySource {
 	 */
 	static SpringConfigurationPropertySource from(PropertySource<?> source) {
 		Assert.notNull(source, "Source must not be null");
+		// 获取propertyMapper
 		PropertyMapper[] mappers = getPropertyMappers(source);
+		// 判断source是否是完全Enumerable类型的
 		if (isFullEnumerable(source)) {
+			// 如果是，创建一个SpringIterableConfigurationPropertySource类型
 			return new SpringIterableConfigurationPropertySource((EnumerablePropertySource<?>) source, mappers);
 		}
+		// 否则，创建一个SpringConfigurationPropertySource返回
 		return new SpringConfigurationPropertySource(source, mappers);
 	}
 
 	private static PropertyMapper[] getPropertyMappers(PropertySource<?> source) {
+		// 如果source是属于SystemEnvironmentPropertySource或者source的name是systemEnvironment或者以该名字结尾的
 		if (source instanceof SystemEnvironmentPropertySource && hasSystemEnvironmentName(source)) {
+			// 返回SystemEnvironmentPropertyMapper和DefaultPropertyMapper
 			return SYSTEM_ENVIRONMENT_MAPPERS;
 		}
+		// 否则返回DefaultPropertyMapper
 		return DEFAULT_MAPPERS;
 	}
 
@@ -164,16 +171,21 @@ class SpringConfigurationPropertySource implements ConfigurationPropertySource {
 	}
 
 	private static boolean isFullEnumerable(PropertySource<?> source) {
+		// 获取到该PropertySource的真正的rootSource
 		PropertySource<?> rootSource = getRootSource(source);
+		// 判断rootSource是否是Map类型的
 		if (rootSource.getSource() instanceof Map) {
 			// Check we're not security restricted
 			try {
+				// 检查是否没有安全限制
 				((Map<?, ?>) rootSource.getSource()).size();
 			}
+			// 如果抛出异常，返回false
 			catch (UnsupportedOperationException ex) {
 				return false;
 			}
 		}
+		// 返回source是否是EnumerablePropertySource类型的
 		return (source instanceof EnumerablePropertySource);
 	}
 

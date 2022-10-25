@@ -160,16 +160,22 @@ public class Binder {
 			BindHandler defaultBindHandler, BindConstructorProvider constructorProvider) {
 		Assert.notNull(sources, "Sources must not be null");
 		this.sources = sources;
+		// 如果placeholdersResolver为null，取默认的NONE对象 value -> value
 		this.placeholdersResolver = (placeholdersResolver != null) ? placeholdersResolver : PlaceholdersResolver.NONE;
+		// 如果conversionService为null，取ApplicationConversionService的单例
 		this.conversionService = (conversionService != null) ? conversionService
 				: ApplicationConversionService.getSharedInstance();
 		this.propertyEditorInitializer = propertyEditorInitializer;
+		// 如果defaultBindHandler为null，取默认的DEFAULT对象
 		this.defaultBindHandler = (defaultBindHandler != null) ? defaultBindHandler : BindHandler.DEFAULT;
+		// 如果constructorProvider为null，取默认的DEFAULT对象
 		if (constructorProvider == null) {
 			constructorProvider = BindConstructorProvider.DEFAULT;
 		}
+		// 初始化一个ValueObjectBinder和JavaBeanBinder，这两个类都属于DataObjectBinder的子类
 		ValueObjectBinder valueObjectBinder = new ValueObjectBinder(constructorProvider);
 		JavaBeanBinder javaBeanBinder = JavaBeanBinder.INSTANCE;
+		// 将上述两个binder作为一个集合赋值给dataObjectBinders字段
 		this.dataObjectBinders = Collections.unmodifiableList(Arrays.asList(valueObjectBinder, javaBeanBinder));
 	}
 
@@ -501,8 +507,11 @@ public class Binder {
 	 * @since 2.2.0
 	 */
 	public static Binder get(Environment environment, BindHandler defaultBindHandler) {
+		// 返回environment的sources的Iterable<ConfigurationPropertySource>的适配器
 		Iterable<ConfigurationPropertySource> sources = ConfigurationPropertySources.get(environment);
+		// 初始化一个PropertySourcesPlaceholdersResolver
 		PropertySourcesPlaceholdersResolver placeholdersResolver = new PropertySourcesPlaceholdersResolver(environment);
+		// 根据sources，placeholdersResolver等初始化一个Binder对象
 		return new Binder(sources, placeholdersResolver, null, null, defaultBindHandler);
 	}
 

@@ -545,6 +545,7 @@ public final class ConfigurationPropertyName implements Comparable<Configuration
 	 */
 	static ConfigurationPropertyName of(CharSequence name, boolean returnNullIfInvalid) {
 		Elements elements = elementsOf(name, returnNullIfInvalid);
+		// 如果elements不为null，初始化一个ConfigurationPropertyName返回，否则返回null
 		return (elements != null) ? new ConfigurationPropertyName(elements) : null;
 	}
 
@@ -557,21 +558,30 @@ public final class ConfigurationPropertyName implements Comparable<Configuration
 	}
 
 	private static Elements elementsOf(CharSequence name, boolean returnNullIfInvalid, int parserCapacity) {
+		// 如果name为null
 		if (name == null) {
+			// 如果returnNullIfInvalid为true，返回null，否则报错
 			Assert.isTrue(returnNullIfInvalid, "Name must not be null");
 			return null;
 		}
+		// 如果name的长度为0，返回Elements.EMPTY
 		if (name.length() == 0) {
 			return Elements.EMPTY;
 		}
+		// 如果name以.开头或者以.结尾
 		if (name.charAt(0) == '.' || name.charAt(name.length() - 1) == '.') {
+			// 如果returnNullIfValid为true，返回null
 			if (returnNullIfInvalid) {
 				return null;
 			}
+			// 否则报错
 			throw new InvalidConfigurationPropertyNameException(name, Collections.singletonList('.'));
 		}
+		// 将name解析为Elements
 		Elements elements = new ElementsParser(name, '.', parserCapacity).parse();
 		for (int i = 0; i < elements.getSize(); i++) {
+			// 判断elements中的type是否有NON_UNIFORM类型的 如果存在的话，
+			// 根据returnNullIfInvalid参数决定是返回null还是报错
 			if (elements.getType(i) == ElementType.NON_UNIFORM) {
 				if (returnNullIfInvalid) {
 					return null;
@@ -579,6 +589,7 @@ public final class ConfigurationPropertyName implements Comparable<Configuration
 				throw new InvalidConfigurationPropertyNameException(name, getInvalidChars(elements, i));
 			}
 		}
+		// 返回elements
 		return elements;
 	}
 
@@ -813,6 +824,12 @@ public final class ConfigurationPropertyName implements Comparable<Configuration
 
 	}
 
+
+	public static void main(String[] args) {
+		Elements parse = new ElementsParser("spr-ing.profiles[1[0]].active", '.', 6).parse();
+		System.out.println();
+	}
+
 	/**
 	 * Main parsing logic used to convert a {@link CharSequence} to {@link Elements}.
 	 */
@@ -857,6 +874,7 @@ public final class ConfigurationPropertyName implements Comparable<Configuration
 			ElementType type = ElementType.EMPTY;
 			for (int i = 0; i < length; i++) {
 				char ch = this.source.charAt(i);
+				// 当字符等于[时
 				if (ch == '[') {
 					if (openBracketCount == 0) {
 						add(start, i, type, valueProcessor);
@@ -865,6 +883,7 @@ public final class ConfigurationPropertyName implements Comparable<Configuration
 					}
 					openBracketCount++;
 				}
+				// 当字符等于]时
 				else if (ch == ']') {
 					openBracketCount--;
 					if (openBracketCount == 0) {
@@ -873,12 +892,15 @@ public final class ConfigurationPropertyName implements Comparable<Configuration
 						type = ElementType.EMPTY;
 					}
 				}
+				// 当类型不是indexed类型 并且字符等于分隔符时
 				else if (!type.isIndexed() && ch == this.separator) {
 					add(start, i, type, valueProcessor);
 					start = i + 1;
 					type = ElementType.EMPTY;
 				}
+				// 以上条件都不满足的情况
 				else {
+					// 更新type
 					type = updateType(type, ch, i - start);
 				}
 			}
@@ -890,24 +912,36 @@ public final class ConfigurationPropertyName implements Comparable<Configuration
 		}
 
 		private ElementType updateType(ElementType existingType, char ch, int index) {
+			// 如果存在的type是indexed的
 			if (existingType.isIndexed()) {
+				// 如果类型是numerically_indexed，但字符不是数字类型，则返回类型为indexed
 				if (existingType == ElementType.NUMERICALLY_INDEXED && !isNumeric(ch)) {
 					return ElementType.INDEXED;
 				}
+				// 否则返回原类型
 				return existingType;
 			}
+			// 如果存在的type是EMPTY，并且字符是合法字符
 			if (existingType == ElementType.EMPTY && isValidChar(ch, index)) {
+				// 判断index是否为0，如果为0，返回UNIFORM，否则返回NON_UNIFORM
 				return (index == 0) ? ElementType.UNIFORM : ElementType.NON_UNIFORM;
 			}
+			// 如果存在的type是UNIFORM，并且字符是破折号-
 			if (existingType == ElementType.UNIFORM && ch == '-') {
+				// 返回DASHED
 				return ElementType.DASHED;
 			}
+			// 如果字符不是合法的
 			if (!isValidChar(ch, index)) {
+				// 如果存在的type的EMPTY，且字符的小写也不是合法的
 				if (existingType == ElementType.EMPTY && !isValidChar(Character.toLowerCase(ch), index)) {
+					// 返回EMPTY
 					return ElementType.EMPTY;
 				}
+				// 否则返回NON_UNIFORM
 				return ElementType.NON_UNIFORM;
 			}
+			// 其他情况返回原类型
 			return existingType;
 		}
 
@@ -915,22 +949,31 @@ public final class ConfigurationPropertyName implements Comparable<Configuration
 			if ((end - start) < 1 || type == ElementType.EMPTY) {
 				return;
 			}
+			// 如果size的大小已经等于数组的大小，进行扩容
 			if (this.start.length == this.size) {
 				this.start = expand(this.start);
 				this.end = expand(this.end);
 				this.type = expand(this.type);
 				this.resolved = expand(this.resolved);
 			}
+			// 如果valueProcessor不为null
 			if (valueProcessor != null) {
+				// 如果resolved为null，创建一个和start数组相同长度的CharSequence数组
 				if (this.resolved == null) {
 					this.resolved = new CharSequence[this.start.length];
 				}
+				// 调用valueProcessor的apply方法，处理value，得到处理后的CharSequence
 				CharSequence resolved = valueProcessor.apply(this.source.subSequence(start, end));
+				// 对处理后的结果再进行解析
 				Elements resolvedElements = new ElementsParser(resolved, '.').parse();
+				// 判断解析出的结果只能有一个元素
 				Assert.state(resolvedElements.getSize() == 1, "Resolved element must not contain multiple elements");
+				// 将得到的结果放入resolved数组相应的下标中
 				this.resolved[this.size] = resolvedElements.get(0);
+				// 并且将type更新为新解析出的elements的type
 				type = resolvedElements.getType(0);
 			}
+			// 将start end type赋值到各个数组中相应的位置，并且将size++
 			this.start[this.size] = start;
 			this.end[this.size] = end;
 			this.type[this.size] = type;
@@ -959,6 +1002,7 @@ public final class ConfigurationPropertyName implements Comparable<Configuration
 		}
 
 		static boolean isValidChar(char ch, int index) {
+			// 当字符是字母或数字或者是破折号且index不等于0的情况下，字符是合法的
 			return isAlpha(ch) || isNumeric(ch) || (index != 0 && ch == '-');
 		}
 
