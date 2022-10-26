@@ -45,12 +45,16 @@ final class DefaultPropertyMapper implements PropertyMapper {
 	@Override
 	public List<String> map(ConfigurationPropertyName configurationPropertyName) {
 		// Use a local copy in case another thread changes things
+		// 拿到上次的mapped的结果
 		LastMapping<ConfigurationPropertyName, List<String>> last = this.lastMappedConfigurationPropertyName;
+		// 如果ConfigurationPropertyName相同，直接返回上次的结果
 		if (last != null && last.isFrom(configurationPropertyName)) {
 			return last.getMapping();
 		}
+		// 调用ConfigurationPropertyName的toString方法
 		String convertedName = configurationPropertyName.toString();
 		List<String> mapping = Collections.singletonList(convertedName);
+		// 将结果缓存起来，返回直接返回
 		this.lastMappedConfigurationPropertyName = new LastMapping<>(configurationPropertyName, mapping);
 		return mapping;
 	}

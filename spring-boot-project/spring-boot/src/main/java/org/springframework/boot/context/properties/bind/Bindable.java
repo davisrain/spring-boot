@@ -199,6 +199,7 @@ public final class Bindable<T> {
 	 */
 	public static <T> Bindable<T> of(Class<T> type) {
 		Assert.notNull(type, "Type must not be null");
+		// 将class转换为resolvableType，调用Bindable的of的重载方法
 		return of(ResolvableType.forClass(type));
 	}
 
@@ -243,18 +244,26 @@ public final class Bindable<T> {
 	 */
 	public static <T> Bindable<T> of(ResolvableType type) {
 		Assert.notNull(type, "Type must not be null");
+		// 获取resolvableType的包装类型的resolvableType
 		ResolvableType boxedType = box(type);
+		// 根据type和resolvableType初始化一个bindable
 		return new Bindable<>(type, boxedType, null, NO_ANNOTATIONS);
 	}
 
 	private static ResolvableType box(ResolvableType type) {
+		// 获取resolvableType的resolved字段，即解析后的class
 		Class<?> resolved = type.resolve();
+		// 如果resolved不为null且是原始类型
 		if (resolved != null && resolved.isPrimitive()) {
+			// 获取它的包装类型
 			Object array = Array.newInstance(resolved, 1);
 			Class<?> wrapperType = Array.get(array, 0).getClass();
+			// 返回包装类型的resolvableType
 			return ResolvableType.forClass(wrapperType);
 		}
+		// 如果resolved不为null且是数组类型
 		if (resolved != null && resolved.isArray()) {
+			// 获取数组的componentType的包装类型，并将其作为componentType，得到其数组类型的resolvableType
 			return ResolvableType.forArrayComponent(box(type.getComponentType()));
 		}
 		return type;

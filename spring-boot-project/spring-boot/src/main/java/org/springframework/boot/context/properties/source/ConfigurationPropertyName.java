@@ -137,41 +137,58 @@ public final class ConfigurationPropertyName implements Comparable<Configuration
 	 * @return the last element
 	 */
 	public String getElement(int elementIndex, Form form) {
+		// 根据下标获取elements在该下标的文本内容，如果有resolved数组，从resolved数组中获取，如果没有，
+		// 从start和end数组中分别拿到起始和结束位置，然后从原始字符串中截取出来
 		CharSequence element = this.elements.get(elementIndex);
+		// 获取elements在该下标的type
 		ElementType type = this.elements.getType(elementIndex);
+		// 如果type是INDEXED相关类型的，直接返回toString的结果
 		if (type.isIndexed()) {
 			return element.toString();
 		}
+		// 如果Form类型为ORIGINAL
 		if (form == Form.ORIGINAL) {
+			// 如果type不是NON_UNIFORM的，直接返回toString
 			if (type != ElementType.NON_UNIFORM) {
 				return element.toString();
 			}
+			// 否则调用convertToOriginalForm方法
 			return convertToOriginalForm(element).toString();
 		}
+		// 如果Form类型为DASHED
 		if (form == Form.DASHED) {
+			// 如果type为UNIFORM或者DASHED，直接返回
 			if (type == ElementType.UNIFORM || type == ElementType.DASHED) {
 				return element.toString();
 			}
+			// 否则调用convertToDashedElement方法
 			return convertToDashedElement(element).toString();
 		}
+		// 如果Form类型为UNIFORM的，根据下标查找uniformElements中是否有值
 		CharSequence uniformElement = this.uniformElements[elementIndex];
 		if (uniformElement == null) {
+			// 如果没有，判断类型是否是UNIFORM的，如果不是，调用convertToUniformElement方法；如果是，直接赋值给uniformElement
 			uniformElement = (type != ElementType.UNIFORM) ? convertToUniformElement(element) : element;
+			// 将uniformElement存入uniformElements数组对应下标中
 			this.uniformElements[elementIndex] = uniformElement.toString();
 		}
+		// 返回uniformElement的值
 		return uniformElement.toString();
 	}
 
 	private CharSequence convertToOriginalForm(CharSequence element) {
+		// element中符合条件的字符会保留，其中符合条件的字符为大小写字母、数字、_符号和不在第一个位置的-符号
 		return convertElement(element, false,
 				(ch, i) -> ch == '_' || ElementsParser.isValidChar(Character.toLowerCase(ch), i));
 	}
 
 	private CharSequence convertToDashedElement(CharSequence element) {
+		// 符合条件的字符为小写字母、数字和不在第一个位置的-符号，其中大写字母会被替换为小写字母
 		return convertElement(element, true, ElementsParser::isValidChar);
 	}
 
 	private CharSequence convertToUniformElement(CharSequence element) {
+		// 符合条件的字符为小写字母和数字、其中大写字母会被替换为小写字母
 		return convertElement(element, true, (ch, i) -> ElementsParser.isAlphaNumeric(ch));
 	}
 
@@ -482,22 +499,29 @@ public final class ConfigurationPropertyName implements Comparable<Configuration
 	}
 
 	private String buildToString() {
+		// 如果elements中的类型只有UNIFORM或者DASHED，直接返回elements的source字符串
 		if (this.elements.canShortcutWithSource(ElementType.UNIFORM, ElementType.DASHED)) {
 			return this.elements.getSource().toString();
 		}
+		// 返回elements的size
 		int elements = getNumberOfElements();
 		StringBuilder result = new StringBuilder(elements * 8);
 		for (int i = 0; i < elements; i++) {
+			// 判断elements在该位置的type是否是INDEXED类型或者NUMERICALLY_INDEXED类型的
 			boolean indexed = isIndexed(i);
+			// 如果结果的字数已经大于0，并且不是INDEXED相关类型的，添加分隔符.
 			if (result.length() > 0 && !indexed) {
 				result.append('.');
 			}
+			// 如果是INDEXED相关类型的，在内容的前后添加[和]符号
 			if (indexed) {
 				result.append('[');
+				// 以ORIGINAL的form格式获取element添加进去
 				result.append(getElement(i, Form.ORIGINAL));
 				result.append(']');
 			}
 			else {
+				// 以DASHED的form格式获取element添加进去
 				result.append(getElement(i, Form.DASHED));
 			}
 		}
@@ -807,14 +831,17 @@ public final class ConfigurationPropertyName implements Comparable<Configuration
 		 * @return {@code true} if all elements match at least one of the types
 		 */
 		boolean canShortcutWithSource(ElementType requiredType, ElementType alternativeType) {
+			// 如果resolved不为null，返回false
 			if (this.resolved != null) {
 				return false;
 			}
 			for (int i = 0; i < this.size; i++) {
 				ElementType type = this.type[i];
+				// 如果存在不等于两个参数的type，返回false
 				if (type != requiredType && type != alternativeType) {
 					return false;
 				}
+				// 如果上一个end的位置加1不等于这一个start开始的位置，则返回false
 				if (i > 0 && this.end[i - 1] + 1 != this.start[i]) {
 					return false;
 				}

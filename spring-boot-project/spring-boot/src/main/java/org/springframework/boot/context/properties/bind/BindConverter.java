@@ -63,8 +63,10 @@ final class BindConverter {
 	private BindConverter(ConversionService conversionService,
 			Consumer<PropertyEditorRegistry> propertyEditorInitializer) {
 		Assert.notNull(conversionService, "ConversionService must not be null");
+		// 根据conversionService以及propertyEditorInitializer拿到一组conversionServices
 		List<ConversionService> conversionServices = getConversionServices(conversionService,
 				propertyEditorInitializer);
+		// 创建一个CompositeConversionService用于保存conversionServices
 		this.conversionService = new CompositeConversionService(conversionServices);
 	}
 

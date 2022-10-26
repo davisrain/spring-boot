@@ -75,15 +75,22 @@ class SpringConfigurationPropertySource implements ConfigurationPropertySource {
 
 	@Override
 	public ConfigurationProperty getConfigurationProperty(ConfigurationPropertyName name) {
+		// 如果name为null，直接返回null
 		if (name == null) {
 			return null;
 		}
+		// 循环mappers
 		for (PropertyMapper mapper : this.mappers) {
 			try {
+				// 调用mapper的map方法，循环其结果
 				for (String candidate : mapper.map(name)) {
+					// 从持有的PropertySource中调用getProperty获取到value
 					Object value = getPropertySource().getProperty(candidate);
+					// 如果value不为null
 					if (value != null) {
+						// 根据propertySource和candidate生成origin
 						Origin origin = PropertySourceOrigin.get(getPropertySource(), candidate);
+						// 根据name value origin 封装成ConfigurationProperty返回
 						return ConfigurationProperty.of(name, value, origin);
 					}
 				}

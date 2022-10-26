@@ -19,6 +19,7 @@ package org.springframework.boot.context.properties.bind;
 import java.lang.annotation.Annotation;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.lang.reflect.Array;
 
 import org.junit.jupiter.api.Test;
 
@@ -176,6 +177,15 @@ class BindableTests {
 	@Retention(RetentionPolicy.RUNTIME)
 	@interface TestAnnotation {
 
+	}
+
+	@Test
+	void testGetPrimitiveBoxType() {
+		Class clazz = int.class;
+		System.out.println(clazz.isPrimitive());
+		Object array = Array.newInstance(clazz, 1);
+		Class<?> boxClass = Array.get(array, 0).getClass();
+		System.out.println(boxClass);
 	}
 
 }

@@ -307,25 +307,36 @@ public class Binder {
 	}
 
 	private <T> T bind(ConfigurationPropertyName name, Bindable<T> target, BindHandler handler, boolean create) {
+		// 判断name 和 target 不能为null
 		Assert.notNull(name, "Name must not be null");
 		Assert.notNull(target, "Target must not be null");
+		// 如果handler为null，取默认的handler，
+		// 如果没有给binder的defaultBindHandler赋值，那么默认是BindHandler的一个匿名类
 		handler = (handler != null) ? handler : this.defaultBindHandler;
+		// 创建上下文对象，其中会根据binder的conversionService和propertyEditorInitializer创建一个BindConvert对象
 		Context context = new Context();
+		// 调用带context参数的bind方法
 		return bind(name, target, handler, context, false, create);
 	}
 
 	private <T> T bind(ConfigurationPropertyName name, Bindable<T> target, BindHandler handler, Context context,
 			boolean allowRecursiveBinding, boolean create) {
 		try {
+			// 调用bindHandler的onStart钩子函数
 			Bindable<T> replacementTarget = handler.onStart(name, target, context);
 			if (replacementTarget == null) {
+				// 如果返回的为null，则调用结果为null的处理绑定结果的方法
 				return handleBindResult(name, target, handler, context, null, create);
 			}
+			// 将target替换为onStart方法返回的target
 			target = replacementTarget;
+			// 调用bindObject方法，该方法执行具体的绑定逻辑
 			Object bound = bindObject(name, target, handler, context, allowRecursiveBinding);
+			// 拿到绑定结果，调用处理绑定结果的方法
 			return handleBindResult(name, target, handler, context, bound, create);
 		}
 		catch (Exception ex) {
+			// 如果出现异常，调用处理绑定错误的方法
 			return handleBindError(name, target, handler, context, ex);
 		}
 	}
@@ -372,16 +383,21 @@ public class Binder {
 
 	private <T> Object bindObject(ConfigurationPropertyName name, Bindable<T> target, BindHandler handler,
 			Context context, boolean allowRecursiveBinding) {
+		// 根据ConfigurationPropertyName查找ConfigurationProperty
 		ConfigurationProperty property = findProperty(name, context);
 		if (property == null && context.depth != 0 && containsNoDescendantOf(context.getSources(), name)) {
 			return null;
 		}
+		// 根据target和context获取聚合binder，当target的type是属于List、Map、数组类型的时候，aggregate不为null
 		AggregateBinder<?> aggregateBinder = getAggregateBinder(target, context);
 		if (aggregateBinder != null) {
+			// 进行聚合绑定
 			return bindAggregate(name, target, handler, context, aggregateBinder);
 		}
+		// 如果property不为null，调用bindProperty方法
 		if (property != null) {
 			try {
+				// 调用bindProperty方法，进行解析占位符，转换类型等操作
 				return bindProperty(target, context, property);
 			}
 			catch (ConverterNotFoundException ex) {
@@ -412,19 +428,25 @@ public class Binder {
 
 	private <T> Object bindAggregate(ConfigurationPropertyName name, Bindable<T> target, BindHandler handler,
 			Context context, AggregateBinder<?> aggregateBinder) {
+		// 声明一个函数式接口
 		AggregateElementBinder elementBinder = (itemName, itemTarget, source) -> {
 			boolean allowRecursiveBinding = aggregateBinder.isAllowRecursiveBinding(source);
 			Supplier<?> supplier = () -> bind(itemName, itemTarget, handler, context, allowRecursiveBinding, false);
 			return context.withSource(source, supplier);
 		};
+		// 将context的depth+1，调用参数中的supplier函数式接口，完成之后将context的depth-1
 		return context.withIncreasedDepth(() -> aggregateBinder.bind(name, target, elementBinder));
 	}
 
 	private ConfigurationProperty findProperty(ConfigurationPropertyName name, Context context) {
+		// 如果ConfigurationPropertyName中的Elements的size为0，返回null
 		if (name.isEmpty()) {
 			return null;
 		}
+		// 调用上下文的getSources方法，获取上下文的ConfigurationPropertySource集合或者Binder的source集合
 		for (ConfigurationPropertySource source : context.getSources()) {
+			// 对每个source调用getConfigurationProperty，
+			// 当property不为null时，返回，否则返回null
 			ConfigurationProperty property = source.getConfigurationProperty(name);
 			if (property != null) {
 				return property;
@@ -434,9 +456,13 @@ public class Binder {
 	}
 
 	private <T> Object bindProperty(Bindable<T> target, Context context, ConfigurationProperty property) {
+		// 将property存入上下文中
 		context.setConfigurationProperty(property);
+		// 拿到property中的value
 		Object result = property.getValue();
+		// 解析占位符
 		result = this.placeholdersResolver.resolvePlaceholders(result);
+		// 调用上下文中的bindConvert进行转换类型
 		result = context.getConverter().convert(result, target);
 		return result;
 	}
@@ -535,6 +561,7 @@ public class Binder {
 		private ConfigurationProperty configurationProperty;
 
 		Context() {
+			// 根据binder中的conversionService和propertyEditorInitializer创建BindConvert
 			this.converter = BindConverter.get(Binder.this.conversionService, Binder.this.propertyEditorInitializer);
 		}
 
@@ -624,9 +651,11 @@ public class Binder {
 
 		@Override
 		public Iterable<ConfigurationPropertySource> getSources() {
+			// 如果sourcePushCount大于0，代表上下文中有自己放入的source，则使用上下文中的source
 			if (this.sourcePushCount > 0) {
 				return this.source;
 			}
+			// 否则使用binder的sources
 			return Binder.this.sources;
 		}
 
