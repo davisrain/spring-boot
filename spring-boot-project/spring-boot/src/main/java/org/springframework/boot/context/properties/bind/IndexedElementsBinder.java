@@ -67,7 +67,9 @@ abstract class IndexedElementsBinder<T> extends AggregateBinder<T> {
 	protected final void bindIndexed(ConfigurationPropertyName name, Bindable<?> target,
 			AggregateElementBinder elementBinder, ResolvableType aggregateType, ResolvableType elementType,
 			IndexedCollectionSupplier result) {
+		// 获取到context中的sources，并开始循环
 		for (ConfigurationPropertySource source : getContext().getSources()) {
+			// 调用重载的bindIndexed方法，多传一个ConfigurationPropertySource类型的参数
 			bindIndexed(source, name, target, elementBinder, result, aggregateType, elementType);
 			if (result.wasSupplied() && result.get() != null) {
 				return;
@@ -78,9 +80,13 @@ abstract class IndexedElementsBinder<T> extends AggregateBinder<T> {
 	private void bindIndexed(ConfigurationPropertySource source, ConfigurationPropertyName root, Bindable<?> target,
 			AggregateElementBinder elementBinder, IndexedCollectionSupplier collection, ResolvableType aggregateType,
 			ResolvableType elementType) {
+		// 根据ConfigurationPropertyName获取到ConfigurationProperty
 		ConfigurationProperty property = source.getConfigurationProperty(root);
+		// 如果获取到的property不为null
 		if (property != null) {
+			// 将property设置进上下文中
 			getContext().setConfigurationProperty(property);
+			// 调用bindValue方法，将property中的value绑定进supplier的get返回对象中
 			bindValue(target, collection.get(), aggregateType, elementType, property.getValue());
 		}
 		else {
@@ -90,6 +96,7 @@ abstract class IndexedElementsBinder<T> extends AggregateBinder<T> {
 
 	private void bindValue(Bindable<?> target, Collection<Object> collection, ResolvableType aggregateType,
 			ResolvableType elementType, Object value) {
+		// 如果value是String类型的，但是没有内容，直接返回，不绑定
 		if (value instanceof String && !StringUtils.hasText((String) value)) {
 			return;
 		}
@@ -139,7 +146,9 @@ abstract class IndexedElementsBinder<T> extends AggregateBinder<T> {
 	}
 
 	private <C> C convert(Object value, ResolvableType type, Annotation... annotations) {
+		// 调用占位符解析器对value进行占位符解析
 		value = getContext().getPlaceholdersResolver().resolvePlaceholders(value);
+		// 然后调用上下文中的bindConvert对value进行类型转换，转换为type对应的类型
 		return getContext().getConverter().convert(value, type, annotations);
 	}
 

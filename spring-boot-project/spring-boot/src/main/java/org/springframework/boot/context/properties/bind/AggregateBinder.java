@@ -53,11 +53,15 @@ abstract class AggregateBinder<T> {
 	 */
 	@SuppressWarnings("unchecked")
 	final Object bind(ConfigurationPropertyName name, Bindable<?> target, AggregateElementBinder elementBinder) {
+		// 调用bindAggregate方法拿到绑定的结果，bindAggregate方法取决于子类的实现
 		Object result = bindAggregate(name, target, elementBinder);
+		// 获取bindable的value
 		Supplier<?> value = target.getValue();
+		// 如果result为null或者value为null，直接返回result
 		if (result == null || value == null) {
 			return result;
 		}
+		// 调用merge方法将supplier类型的value和result合并起来返回，merge方法取决于子类的实现
 		return merge((Supplier<T>) value, (T) result);
 	}
 

@@ -72,12 +72,17 @@ final class BindConverter {
 
 	private List<ConversionService> getConversionServices(ConversionService conversionService,
 			Consumer<PropertyEditorRegistry> propertyEditorInitializer) {
+		// 创建一个list容器存放ConversionService
 		List<ConversionService> services = new ArrayList<>();
+		// 添加一个TypeConvertConversionService
 		services.add(new TypeConverterConversionService(propertyEditorInitializer));
+		// 将Binder的conversionService添加进去
 		services.add(conversionService);
+		// 如果Binder的conversionService不是ApplicationConversionService的话，将ApplicationConversionService的单例添加进去
 		if (!(conversionService instanceof ApplicationConversionService)) {
 			services.add(ApplicationConversionService.getSharedInstance());
 		}
+		// 返回集合
 		return services;
 	}
 
@@ -101,9 +106,12 @@ final class BindConverter {
 
 	static BindConverter get(ConversionService conversionService,
 			Consumer<PropertyEditorRegistry> propertyEditorInitializer) {
+		// 如果conversionService等于ApplicationConversionService的单例并且propertyEditorInitialier为null的话
 		if (conversionService == ApplicationConversionService.getSharedInstance()
 				&& propertyEditorInitializer == null) {
+			// 返回BindConvert的单例
 			if (sharedInstance == null) {
+				// 如果BindConvert的单例为空，根据conversionService和propertyEditorInitilizer初始化
 				sharedInstance = new BindConverter(conversionService, propertyEditorInitializer);
 			}
 			return sharedInstance;
@@ -182,7 +190,9 @@ final class BindConverter {
 	private static class TypeConverterConversionService extends GenericConversionService {
 
 		TypeConverterConversionService(Consumer<PropertyEditorRegistry> initializer) {
+			// 创建一个TypeConverterConverter加入到该conversionService中
 			addConverter(new TypeConverterConverter(createTypeConverter(initializer)));
+			// 将分隔Strings的转换器加入到该conversionService中
 			ApplicationConversionService.addDelimitedStringConverters(this);
 		}
 
