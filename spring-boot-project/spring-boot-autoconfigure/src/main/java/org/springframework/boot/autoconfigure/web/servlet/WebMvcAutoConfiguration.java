@@ -240,7 +240,9 @@ public class WebMvcAutoConfiguration {
 		@Override
 		@SuppressWarnings("deprecation")
 		public void configurePathMatch(PathMatchConfigurer configurer) {
+			// 设置PathMatchConfigurer的useSuffixPatternMatch参数，默认为false
 			configurer.setUseSuffixPatternMatch(this.mvcProperties.getPathmatch().isUseSuffixPattern());
+			// 设置PathMatchConfigurer的useRegisteredSuffixPatternMatch参数，默认为false
 			configurer.setUseRegisteredSuffixPatternMatch(
 					this.mvcProperties.getPathmatch().isUseRegisteredSuffixPattern());
 			this.dispatcherServletPath.ifAvailable((dispatcherPath) -> {
@@ -248,6 +250,7 @@ public class WebMvcAutoConfiguration {
 				if (servletUrlMapping.equals("/") && singleDispatcherServlet()) {
 					UrlPathHelper urlPathHelper = new UrlPathHelper();
 					urlPathHelper.setAlwaysUseFullPath(true);
+					// 设置configurer的urlPathHelper，并将alwaysUseFullPath设置为true
 					configurer.setUrlPathHelper(urlPathHelper);
 				}
 			});
