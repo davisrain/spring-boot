@@ -103,23 +103,30 @@ class SpringConfigurationPropertySource implements ConfigurationPropertySource {
 
 	@Override
 	public ConfigurationPropertyState containsDescendantOf(ConfigurationPropertyName name) {
+		// 获取到ConfigurationPropertySource持有的原始的PropertySource
 		PropertySource<?> source = getPropertySource();
+		// 判断PropertySource中的source是否是Random，如果是的话，调用containsDescendantOfForRandom方法进行判断
 		if (source.getSource() instanceof Random) {
 			return containsDescendantOfForRandom("random", name);
 		}
+		// 如果PropertySource的source仍是PropertySource，并且source的source是random的话，也调用containsDescendantOfForRandom方法进行判断，
+		// 区别在于prefix传入的不同
 		if (source.getSource() instanceof PropertySource<?>
 				&& ((PropertySource<?>) source.getSource()).getSource() instanceof Random) {
 			// Assume wrapped random sources use the source name as the prefix
 			return containsDescendantOfForRandom(source.getName(), name);
 		}
+		// 其余情况返回不知道的状态
 		return ConfigurationPropertyState.UNKNOWN;
 	}
 
 	private static ConfigurationPropertyState containsDescendantOfForRandom(String prefix,
 			ConfigurationPropertyName name) {
+		// 如果name的elements的size大于1，并且第一个dashed格式的element和prefix相等，那么返回属性存在的状态
 		if (name.getNumberOfElements() > 1 && name.getElement(0, Form.DASHED).equals(prefix)) {
 			return ConfigurationPropertyState.PRESENT;
 		}
+		// 否则返回属性缺失的状态
 		return ConfigurationPropertyState.ABSENT;
 	}
 

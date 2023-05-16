@@ -72,18 +72,27 @@ class SoftReferenceConfigurationPropertyCache<T> implements ConfigurationPropert
 	 * @return the value from the cache
 	 */
 	T get(Supplier<T> factory, UnaryOperator<T> refreshAction) {
+		// 获取value
 		T value = getValue();
+		// 如果value为null的话，调用factory的get 返回调用refreshAction的apply方法生成
 		if (value == null) {
 			value = refreshAction.apply(factory.get());
+			// setValue
 			setValue(value);
 		}
+		// 如果value不为null，但是已经过期了
 		else if (hasExpired()) {
+			// 调用刷新操作
 			value = refreshAction.apply(value);
+			// setValue
 			setValue(value);
 		}
+		// 如果缓存不是不过过期的
 		if (!this.neverExpire) {
+			// 那么将lastAccessed设为当前时间
 			this.lastAccessed = now();
 		}
+		// 返回value
 		return value;
 	}
 

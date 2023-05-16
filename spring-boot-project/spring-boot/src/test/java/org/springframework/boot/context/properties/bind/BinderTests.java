@@ -31,10 +31,7 @@ import org.mockito.Answers;
 import org.mockito.InOrder;
 
 import org.springframework.boot.context.properties.bind.validation.ValidationBindHandler;
-import org.springframework.boot.context.properties.source.ConfigurationPropertyName;
-import org.springframework.boot.context.properties.source.ConfigurationPropertySource;
-import org.springframework.boot.context.properties.source.ConfigurationPropertySources;
-import org.springframework.boot.context.properties.source.MockConfigurationPropertySource;
+import org.springframework.boot.context.properties.source.*;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.convert.ConversionFailedException;
 import org.springframework.core.env.MapPropertySource;
@@ -67,6 +64,16 @@ class BinderTests {
 	private final List<ConfigurationPropertySource> sources = new ArrayList<>();
 
 	private Binder binder = new Binder(this.sources);
+
+	@Test
+	void bindUserJavaBean() {
+		MapConfigurationPropertySource cps = new MapConfigurationPropertySource();
+		cps.put("user.name", "daizhengyu");
+		cps.put("user.age", 26);
+		sources.add(cps);
+		BindResult<User> user = binder.bind("user", Bindable.ofInstance(new User()));
+		System.out.println(user.get().toString());
+	}
 
 	@Test
 	void createWhenSourcesIsNullShouldThrowException() {
@@ -314,6 +321,37 @@ class BinderTests {
 
 		});
 		assertThat(result.isBound()).isFalse();
+	}
+
+	static class User {
+
+		private String name;
+
+		private int age;
+
+		public String getName() {
+			return name;
+		}
+
+		public int getAge() {
+			return age;
+		}
+
+		public void setName(String name) {
+			this.name = name;
+		}
+
+		public void setAge(int age) {
+			this.age = age;
+		}
+
+		@Override
+		public String toString() {
+			return "User{" +
+					"name='" + name + '\'' +
+					", age=" + age +
+					'}';
+		}
 	}
 
 	static class JavaBean {

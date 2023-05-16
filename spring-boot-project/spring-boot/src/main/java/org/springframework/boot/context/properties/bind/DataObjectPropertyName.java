@@ -39,6 +39,7 @@ public abstract class DataObjectPropertyName {
 		boolean inIndex = false;
 		for (int i = 0; i < name.length(); i++) {
 			char ch = name.charAt(i);
+			// 如果是在[]内的内容，直接将字符添加进result中，不进行额外处理
 			if (inIndex) {
 				result.append(ch);
 				if (ch == ']') {
@@ -50,11 +51,15 @@ public abstract class DataObjectPropertyName {
 					inIndex = true;
 					result.append(ch);
 				}
+				// 如果不是在[]中的内容，进行转换，保证了 驼峰命名法 和 下划线命名法 会被转换为 破折号写法
 				else {
+					// 将字符_替换为字符-
 					ch = (ch != '_') ? ch : '-';
+					// 如果字符为大写，并且不是首字符，并且result的最后一个字符不是-，那么向result中添加一个-
 					if (Character.isUpperCase(ch) && result.length() > 0 && result.charAt(result.length() - 1) != '-') {
 						result.append('-');
 					}
+					// 将字符转换为小写添加进result
 					result.append(Character.toLowerCase(ch));
 				}
 			}

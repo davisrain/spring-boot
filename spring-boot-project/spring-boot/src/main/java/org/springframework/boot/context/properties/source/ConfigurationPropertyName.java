@@ -268,8 +268,11 @@ public final class ConfigurationPropertyName implements Comparable<Configuration
 	 * @param name the name to check
 	 * @return {@code true} if this name is an ancestor
 	 */
+	// 如果自身是指定ConfigurationPropertyName的祖先，那么返回true。
+	// ex. spring.profiles 是 spring.profiles.active的祖先
 	public boolean isAncestorOf(ConfigurationPropertyName name) {
 		Assert.notNull(name, "Name must not be null");
+		// 如果自身elements的size大于等于了了指定elements的size，那么必定不是其祖先。
 		if (getNumberOfElements() >= name.getNumberOfElements()) {
 			return false;
 		}
@@ -343,28 +346,36 @@ public final class ConfigurationPropertyName implements Comparable<Configuration
 	}
 
 	private boolean elementsEqual(ConfigurationPropertyName name) {
+		// 从自身的size往前遍历，比较对应下标的每个element元素
 		for (int i = this.elements.getSize() - 1; i >= 0; i--) {
+			// 如果elementDiffers方法返回true，说明有不同的地方，那么elements就不相等，因此返回false。
 			if (elementDiffers(this.elements, name.elements, i)) {
 				return false;
 			}
 		}
+		// 否则返回true
 		return true;
 	}
 
 	private boolean elementDiffers(Elements e1, Elements e2, int i) {
+		// 获取到两个elements下标i的对应的ElementType
 		ElementType type1 = e1.getType(i);
 		ElementType type2 = e2.getType(i);
+		// 如果两个ElementType都是支持快速相等检查的，进行快速相等检验。需要ElementType是UNIFORM或者NUMERICALLY_INDEXED
 		if (type1.allowsFastEqualityCheck() && type2.allowsFastEqualityCheck()) {
 			return !fastElementEquals(e1, e2, i);
 		}
+		// 如果两个ElementType是支持忽略破折号相等检验的，那么进行忽略破折号相等检验。需要ElementType是UNIFORM或者NUMERICALLY_INDEXED或者DASHED
 		else if (type1.allowsDashIgnoringEqualityCheck() && type2.allowsDashIgnoringEqualityCheck()) {
 			return !dashIgnoringElementEquals(e1, e2, i);
 		}
 		else {
+			// 否则使用默认的相等检验
 			return !defaultElementEquals(e1, e2, i);
 		}
 	}
 
+	// 先比较element的长度，如果长度一样，一次比较每个字符是否相同
 	private boolean fastElementEquals(Elements e1, Elements e2, int i) {
 		int length1 = e1.getLength(i);
 		int length2 = e2.getLength(i);
@@ -853,8 +864,9 @@ public final class ConfigurationPropertyName implements Comparable<Configuration
 
 
 	public static void main(String[] args) {
-		Elements parse = new ElementsParser("spr-ing.profiles[1[0]].active", '.', 6).parse();
-		System.out.println();
+		Elements parse = new ElementsParser("-xx.spr-ing.profiles[1[0]].aCtive", '.', 6).parse();
+		ConfigurationPropertyName cpn = new ConfigurationPropertyName(parse);
+		System.out.println(cpn.toString());
 	}
 
 	/**

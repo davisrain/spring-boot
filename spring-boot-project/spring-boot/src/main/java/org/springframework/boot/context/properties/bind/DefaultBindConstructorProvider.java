@@ -32,16 +32,21 @@ class DefaultBindConstructorProvider implements BindConstructorProvider {
 	@Override
 	public Constructor<?> getBindConstructor(Bindable<?> bindable, boolean isNestedConstructorBinding) {
 		Class<?> type = bindable.getType().resolve();
+		// 如果bindable的value不为null或者type为null的话，返回null
 		if (bindable.getValue() != null || type == null) {
 			return null;
 		}
+		// 判断是否是kotlin语言
 		if (KotlinDetector.isKotlinPresent() && KotlinDetector.isKotlinType(type)) {
 			return getDeducedKotlinConstructor(type);
 		}
+		// 获取type中声明的构造器
 		Constructor<?>[] constructors = type.getDeclaredConstructors();
+		// 如果声明的构造器只有一个且参数大于0，返回
 		if (constructors.length == 1 && constructors[0].getParameterCount() > 0) {
 			return constructors[0];
 		}
+		// 否则返回null
 		return null;
 	}
 

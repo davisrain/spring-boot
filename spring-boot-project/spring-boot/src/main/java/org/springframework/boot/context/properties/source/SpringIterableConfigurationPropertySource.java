@@ -62,12 +62,15 @@ class SpringIterableConfigurationPropertySource extends SpringConfigurationPrope
 	SpringIterableConfigurationPropertySource(EnumerablePropertySource<?> propertySource, PropertyMapper... mappers) {
 		super(propertySource, mappers);
 		assertEnumerablePropertySource();
+		// 从PropertyMapper中获取 ancestorOfCheck 祖先检查
 		this.ancestorOfCheck = getAncestorOfCheck(mappers);
+		// 将cache初始化为SoftReferenceConfigurationPropertyCache
 		this.cache = new SoftReferenceConfigurationPropertyCache<>(isImmutablePropertySource());
 	}
 
 	private BiPredicate<ConfigurationPropertyName, ConfigurationPropertyName> getAncestorOfCheck(
 			PropertyMapper[] mappers) {
+		// 将所有PropertyMapper中的祖先检查or起来，返回
 		BiPredicate<ConfigurationPropertyName, ConfigurationPropertyName> ancestorOfCheck = mappers[0]
 				.getAncestorOfCheck();
 		for (int i = 1; i < mappers.length; i++) {
@@ -124,19 +127,27 @@ class SpringIterableConfigurationPropertySource extends SpringConfigurationPrope
 
 	@Override
 	public ConfigurationPropertyState containsDescendantOf(ConfigurationPropertyName name) {
+		// 调用父类的containsDescendantOf方法返回result
 		ConfigurationPropertyState result = super.containsDescendantOf(name);
+		// 如果父类方法判断出的结果已经不是 不知道了 那么直接返回
 		if (result != ConfigurationPropertyState.UNKNOWN) {
 			return result;
 		}
+		// 如果自身的ancestorOfCheck是PropertyMapper接口的静态变量DEFAULT_ANCESTOR_OF_CHECK
+		// 从缓存的mappings中查找是否包含name的后代
 		if (this.ancestorOfCheck == PropertyMapper.DEFAULT_ANCESTOR_OF_CHECK) {
 			return getMappings().containsDescendantOf(name, this.ancestorOfCheck);
 		}
+
+		// 否则，从mappings中获取所有的ConfigurationPropertyName，依次遍历并且调用ancestorOfCheck来进行检查，
+		// 如果存在任何一个ConfigurationPropertyName是name的后代，那么返回存在状态
 		ConfigurationPropertyName[] candidates = getConfigurationPropertyNames();
 		for (ConfigurationPropertyName candidate : candidates) {
 			if (candidate != null && this.ancestorOfCheck.test(name, candidate)) {
 				return ConfigurationPropertyState.PRESENT;
 			}
 		}
+		// 否则返回缺失状态
 		return ConfigurationPropertyState.ABSENT;
 	}
 
@@ -154,27 +165,38 @@ class SpringIterableConfigurationPropertySource extends SpringConfigurationPrope
 	}
 
 	private Mappings getMappings() {
+		// 从缓存中获取Mappings，如果缓存中没有，调用createMappings创建，并用updateMappings刷新；
+		// 如果缓存中的过期了，调用updateMappings刷新
 		return this.cache.get(this::createMappings, this::updateMappings);
 	}
 
 	private Mappings createMappings() {
+		// 创建一个mappings对象，参数为
+		// ConfigurationPropertySource的PropertyMappers；
+		// 以及持有的是否是不可变的PropertySource；
+		// 以及祖先检查是否等于PropertyMapper默认的祖先检查
 		return new Mappings(getMappers(), isImmutablePropertySource(),
 				this.ancestorOfCheck == PropertyMapper.DEFAULT_ANCESTOR_OF_CHECK);
 	}
 
 	private Mappings updateMappings(Mappings mappings) {
+		// 刷新Mappings对象中的mappings的字段，该字段是一个Map<ConfigurationPropertyName, Set<String>>类型的。
 		mappings.updateMappings(getPropertySource()::getPropertyNames);
 		return mappings;
 	}
 
+	// 判断持有的PropertySource是否是不变的
 	private boolean isImmutablePropertySource() {
 		EnumerablePropertySource<?> source = getPropertySource();
+		// 如果propertySource实现了OriginLookup接口，那么调用接口的isImmutable方法
 		if (source instanceof OriginLookup) {
 			return ((OriginLookup<?>) source).isImmutable();
 		}
+		// 如果propertySource的name是systemProperties，那么判断它的source是否等于System.getenv()，如果相等就是不变的
 		if (StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME.equals(source.getName())) {
 			return source.getSource() == System.getenv();
 		}
+		// 否则返回false
 		return false;
 	}
 

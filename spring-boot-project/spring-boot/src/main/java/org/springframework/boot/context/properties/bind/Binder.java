@@ -344,20 +344,28 @@ public class Binder {
 	private <T> T handleBindResult(ConfigurationPropertyName name, Bindable<T> target, BindHandler handler,
 			Context context, Object result, boolean create) throws Exception {
 		if (result != null) {
+			// 调用bindHandler的onSuccess钩子函数
 			result = handler.onSuccess(name, target, context, result);
+			// 将结果转换为target中的type类型
 			result = context.getConverter().convert(result, target);
 		}
+		// 如果结果为null，并且create标志是为true的
 		if (result == null && create) {
+			// 那么调用create方法进行创建
 			result = create(target, context);
+			// 调用bindHandler的onCreate钩子函数
 			result = handler.onCreate(name, target, context, result);
+			// 转换类型
 			result = context.getConverter().convert(result, target);
 			Assert.state(result != null, () -> "Unable to create instance for " + target.getType());
 		}
+		// 调用bindHandler的onFinish钩子函数
 		handler.onFinish(name, target, context, result);
 		return context.getConverter().convert(result, target);
 	}
 
 	private Object create(Bindable<?> target, Context context) {
+		// 遍历binder持有的dataObjectBinder，并调用其create方法进行创建
 		for (DataObjectBinder dataObjectBinder : this.dataObjectBinders) {
 			Object instance = dataObjectBinder.create(target, context);
 			if (instance != null) {
@@ -385,6 +393,8 @@ public class Binder {
 			Context context, boolean allowRecursiveBinding) {
 		// 根据ConfigurationPropertyName查找ConfigurationProperty
 		ConfigurationProperty property = findProperty(name, context);
+		// 如果查找到的属性为null，并且深度不为0，说明已经是在bindDataObject方法中，是针对对象属性的绑定了，
+		// 并且所持有的ConfigurationPropertySources已经没有name对应的后代了，那么直接返回null，表示该属性为null。
 		if (property == null && context.depth != 0 && containsNoDescendantOf(context.getSources(), name)) {
 			return null;
 		}
@@ -469,17 +479,27 @@ public class Binder {
 
 	private Object bindDataObject(ConfigurationPropertyName name, Bindable<?> target, BindHandler handler,
 			Context context, boolean allowRecursiveBinding) {
+		// 判断target是否是不能被绑定的bean，判断依据是 不能是原始类型以及Object.class Class.class以及以java.开头的类
 		if (isUnbindableBean(name, target, context)) {
 			return null;
 		}
 		Class<?> type = target.getType().resolve(Object.class);
+		// 如果不允许递归绑定 并且 type已经处在正绑定的状态了，返回null。
 		if (!allowRecursiveBinding && context.isBindingDataObject(type)) {
 			return null;
 		}
+		// 创建一个DataObjectPropertyBinder，用于将属性绑定进DataObject的属性中。
+		// 实现是在name的后面添加上propertyName，再次调用binder的bind方法，由于此时name已经改变。
+		// 如果在ConfigurationPropertySources中找到对应的属性，那么就会走到bindProperty方法中去；
+		// 又或者仍然找不到对应的属性，那么会继续走到bindDataObject方法中，即是内嵌的对象。
 		DataObjectPropertyBinder propertyBinder = (propertyName, propertyTarget) -> bind(name.append(propertyName),
 				propertyTarget, handler, context, false, false);
-		return context.withDataObject(type, () -> {
+		return context.withDataObject(type,
+				// 传入的Supplier才是具体的绑定逻辑
+				() -> {
+			// 遍历binder所持有的dataObjectBinder(默认持有JavaBeanBinder和ValueObjectBinder)，并调用其bind方法，如果任一返回不为null，直接返回，否则返回null。
 			for (DataObjectBinder dataObjectBinder : this.dataObjectBinders) {
+				// 其中propertyBinder是前面创建的 用于绑定属性
 				Object instance = dataObjectBinder.bind(name, target, context, propertyBinder);
 				if (instance != null) {
 					return instance;
@@ -490,6 +510,9 @@ public class Binder {
 	}
 
 	private boolean isUnbindableBean(ConfigurationPropertyName name, Bindable<?> target, Context context) {
+		// 遍历循环context中的ConfigurationPropertySource
+		// 判断source中是否有name对应的后代，如果是存在状态的话，说明source中有属性可以被绑定，那么返回false，表示可以进行绑定。
+		// 比如spring.profiles.active是spring.profiles的后代
 		for (ConfigurationPropertySource source : context.getSources()) {
 			if (source.containsDescendantOf(name) == ConfigurationPropertyState.PRESENT) {
 				// We know there are properties to bind so we can't bypass anything
@@ -497,9 +520,11 @@ public class Binder {
 			}
 		}
 		Class<?> resolved = target.getType().resolve(Object.class);
+		// 如果类型是原始类型或者是Object.class Class.class，返回true，表示该类不能被绑定
 		if (resolved.isPrimitive() || NON_BEAN_CLASSES.contains(resolved)) {
 			return true;
 		}
+		// 如果类是以java.开头的，也不能被绑定
 		return resolved.getName().startsWith("java.");
 	}
 
@@ -588,11 +613,13 @@ public class Binder {
 		}
 
 		private <T> T withDataObject(Class<?> type, Supplier<T> supplier) {
+			// 将type入栈，表示该type正在进行绑定
 			this.dataObjectBindings.push(type);
 			try {
 				return withIncreasedDepth(supplier);
 			}
 			finally {
+				// 将type出栈，表示type已经绑定完成
 				this.dataObjectBindings.pop();
 			}
 		}
@@ -602,11 +629,14 @@ public class Binder {
 		}
 
 		private <T> T withIncreasedDepth(Supplier<T> supplier) {
+			// 增加绑定深度
 			increaseDepth();
 			try {
+				// 调用supplier的get方法执行具体的绑定逻辑
 				return supplier.get();
 			}
 			finally {
+				// 减少绑定深度
 				decreaseDepth();
 			}
 		}
