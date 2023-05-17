@@ -41,15 +41,26 @@ class CollectionBinder extends IndexedElementsBinder<Collection<Object>> {
 	protected Object bindAggregate(ConfigurationPropertyName name, Bindable<?> target,
 			AggregateElementBinder elementBinder) {
 		Class<?> collectionType = (target.getValue() != null) ? List.class : target.getType().resolve(Object.class);
+		// 然后根据获取到的generics(ResolvableType数组，其中type为TypeVariable，resolved字段为TypeVariable实际对应的类型)
+		// 和List.class生成一个聚合的ResolvableType，其中type为SyntheticParameterizedType，variableResolver是根据variables
+		// 和generics构建的TypeVariablesVariableResolver
 		ResolvableType aggregateType = ResolvableType.forClassWithGenerics(List.class,
+				// 获取到bindable的resolvableType的generics
 				target.getType().asCollection().getGenerics());
+		// 获取到集合内元素的实际ResolvableType，因为List类型只会带一个泛型，
+		// 因此获取到的ResolvableType的resolved字段就是集合对应的元素类型
 		ResolvableType elementType = target.getType().asCollection().getGeneric();
+		// 初始化一个IndexedCollectionSupplier，它的get方法的逻辑是调用持有的supplier的get方法，
+		// 一旦调用了该supplier的get方法，它就会将获取的对象持有到supplied字段中
 		IndexedCollectionSupplier result = new IndexedCollectionSupplier(
+				// 传入的supplier逻辑是：根据集合类型 和 元素类型，调用CollectionFactory的方法创建一个集合
 				() -> CollectionFactory.createCollection(collectionType, elementType.resolve(), 0));
 		bindIndexed(name, target, elementBinder, aggregateType, elementType, result);
+		// 判断IndexedCollectionSupplier的supplied字段是否不为null，如果是，返回supplied字段
 		if (result.wasSupplied()) {
 			return result.get();
 		}
+		// 否则返回null
 		return null;
 	}
 

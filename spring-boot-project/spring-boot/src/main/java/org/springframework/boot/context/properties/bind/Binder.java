@@ -423,6 +423,7 @@ public class Binder {
 	}
 
 	private AggregateBinder<?> getAggregateBinder(Bindable<?> target, Context context) {
+		// 判断bindable的type是否是Map List 或者数组类型的，如果是的话，分别创建对应的binder
 		Class<?> resolvedType = target.getType().resolve(Object.class);
 		if (Map.class.isAssignableFrom(resolvedType)) {
 			return new MapBinder(context);
@@ -438,7 +439,8 @@ public class Binder {
 
 	private <T> Object bindAggregate(ConfigurationPropertyName name, Bindable<T> target, BindHandler handler,
 			Context context, AggregateBinder<?> aggregateBinder) {
-		// 声明一个函数式接口
+		// 初始化一个聚合元素绑定器，根据元素的ConfigurationPropertyName，元素的Bindable和指定的ConfigurationPropertySource。
+		// 进行绑定，并返回绑定对象。
 		AggregateElementBinder elementBinder = (itemName, itemTarget, source) -> {
 			boolean allowRecursiveBinding = aggregateBinder.isAllowRecursiveBinding(source);
 			Supplier<?> supplier = () -> bind(itemName, itemTarget, handler, context, allowRecursiveBinding, false);

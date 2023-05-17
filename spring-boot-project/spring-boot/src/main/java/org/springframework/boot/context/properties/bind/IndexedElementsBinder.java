@@ -52,6 +52,7 @@ abstract class IndexedElementsBinder<T> extends AggregateBinder<T> {
 
 	@Override
 	protected boolean isAllowRecursiveBinding(ConfigurationPropertySource source) {
+		// 如果source为null或者source是IterableConfigurationSource类型的，那么允许递归绑定
 		return source == null || source instanceof IterableConfigurationPropertySource;
 	}
 
@@ -71,6 +72,7 @@ abstract class IndexedElementsBinder<T> extends AggregateBinder<T> {
 		for (ConfigurationPropertySource source : getContext().getSources()) {
 			// 调用重载的bindIndexed方法，多传一个ConfigurationPropertySource类型的参数
 			bindIndexed(source, name, target, elementBinder, result, aggregateType, elementType);
+			// 一旦supplier的supplied字段不为null了，就返回
 			if (result.wasSupplied() && result.get() != null) {
 				return;
 			}
@@ -90,6 +92,7 @@ abstract class IndexedElementsBinder<T> extends AggregateBinder<T> {
 			bindValue(target, collection.get(), aggregateType, elementType, property.getValue());
 		}
 		else {
+			// 如果没有对应的property，尝试查找root的子属性，并且子属性需要为root+[i]这种格式的
 			bindIndexed(source, root, elementBinder, collection, elementType);
 		}
 	}
@@ -100,40 +103,57 @@ abstract class IndexedElementsBinder<T> extends AggregateBinder<T> {
 		if (value instanceof String && !StringUtils.hasText((String) value)) {
 			return;
 		}
+		// 将value转换为聚合对象
 		Object aggregate = convert(value, aggregateType, target.getAnnotations());
+		// 根据生成的collection对象的类型和elementType初始化一个集合对应的ResolvableType
 		ResolvableType collectionType = ResolvableType.forClassWithGenerics(collection.getClass(), elementType);
+		// 然后将聚合对象转换为这个集合对象
 		Collection<Object> elements = convert(aggregate, collectionType);
+		// 往集合中添加转换后的集合对象
 		collection.addAll(elements);
 	}
 
 	private void bindIndexed(ConfigurationPropertySource source, ConfigurationPropertyName root,
 			AggregateElementBinder elementBinder, IndexedCollectionSupplier collection, ResolvableType elementType) {
+		// 查找source中是否存在root的最后一个element为indexed类型的子属性
 		MultiValueMap<String, ConfigurationPropertyName> knownIndexedChildren = getKnownIndexedChildren(source, root);
 		for (int i = 0; i < Integer.MAX_VALUE; i++) {
+			// 依次往root后面添加[i]，然后调用elementBinder进行绑定
 			ConfigurationPropertyName name = root.append((i != 0) ? "[" + i + "]" : INDEX_ZERO);
 			Object value = elementBinder.bind(name, Bindable.of(elementType), source);
+			// 如果value为null的话，跳出循环
 			if (value == null) {
 				break;
 			}
+			// 绑定完成后将MultiValueMap中对应的key删除
 			knownIndexedChildren.remove(name.getLastElement(Form.UNIFORM));
+			// 将绑定的结果添加到最后要返回的集合中
 			collection.get().add(value);
 		}
+		// 最后检查是否有没有绑定到的子属性，即检查MultiValueMap是否为空的，有的话抛出异常
 		assertNoUnboundChildren(source, knownIndexedChildren);
 	}
 
 	private MultiValueMap<String, ConfigurationPropertyName> getKnownIndexedChildren(ConfigurationPropertySource source,
 			ConfigurationPropertyName root) {
 		MultiValueMap<String, ConfigurationPropertyName> children = new LinkedMultiValueMap<>();
+		// 如果source不是IterableConfigurationPropertySource类型的，直接返回
 		if (!(source instanceof IterableConfigurationPropertySource)) {
 			return children;
 		}
+		// 遍历并筛选出source中是root子属性的ConfigurationPropertyName
 		for (ConfigurationPropertyName name : (IterableConfigurationPropertySource) source.filter(root::isAncestorOf)) {
+			// 截取筛选出来的name，使得它的size只能比root大1
 			ConfigurationPropertyName choppedName = name.chop(root.getNumberOfElements() + 1);
+			// 判断截取出来的name的最后一个element是否是indexed类型的
 			if (choppedName.isLastElementIndexed()) {
+				// 如果是，以UNIFORM的格式获取最后一个element，只会保留小写字符和数字
 				String key = choppedName.getLastElement(Form.UNIFORM);
+				// 然后将key和name添加到MultiValueMap中
 				children.add(key, name);
 			}
 		}
+		// 返回MultiValueMap
 		return children;
 	}
 

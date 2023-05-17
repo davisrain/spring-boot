@@ -17,6 +17,7 @@
 package org.springframework.boot.context.properties.bind;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
@@ -31,6 +32,7 @@ import org.springframework.boot.context.properties.bind.BinderTests.ExampleEnum;
 import org.springframework.boot.context.properties.bind.BinderTests.JavaBean;
 import org.springframework.boot.context.properties.source.ConfigurationProperty;
 import org.springframework.boot.context.properties.source.ConfigurationPropertySource;
+import org.springframework.boot.context.properties.source.MapConfigurationPropertySource;
 import org.springframework.boot.context.properties.source.MockConfigurationPropertySource;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.env.StandardEnvironment;
@@ -56,6 +58,38 @@ class CollectionBinderTests {
 	private final List<ConfigurationPropertySource> sources = new ArrayList<>();
 
 	private Binder binder = new Binder(this.sources);
+
+	@Test
+	void bindStringListUsingBindValue() {
+		MapConfigurationPropertySource cps = new MapConfigurationPropertySource();
+		cps.put("users", Arrays.asList("dai", "zheng", "yu"));
+		sources.add(cps);
+		BindResult<List> users = this.binder.bind("users", Bindable.of(List.class));
+		System.out.println(users.get());
+	}
+
+	@Test
+	void bindStringListUsingBindIndexed() {
+		MapConfigurationPropertySource cps = new MapConfigurationPropertySource();
+		cps.put("users[0]", "dai");
+		cps.put("users[1]", "zhengyu");
+		cps.put("users[2]", "yu");
+		sources.add(cps);
+		BindResult<List<String>> users = this.binder.bind("users",
+				Bindable.of(ResolvableType.forClassWithGenerics(List.class, String.class)));
+		System.out.println(users.get());
+	}
+
+	@Test
+	void bindJavaBeanListUsingBindIndexed() {
+		MapConfigurationPropertySource cps = new MapConfigurationPropertySource();
+		cps.put("foo[0].value", "dai");
+		cps.put("foo[1].value", "zhengyu");
+		cps.put("foo[2].value", "yu");
+		sources.add(cps);
+		BindResult<List<JavaBean>> beans = this.binder.bind("foo", Bindable.listOf(JavaBean.class));
+		System.out.println(beans.get());
+	}
 
 	@Test
 	void bindToCollectionShouldReturnPopulatedCollection() {

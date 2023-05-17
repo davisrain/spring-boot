@@ -53,18 +53,30 @@ class MapBinder extends AggregateBinder<Map<Object, Object>> {
 	@Override
 	protected Object bindAggregate(ConfigurationPropertyName name, Bindable<?> target,
 			AggregateElementBinder elementBinder) {
+		// 使用CollectionFactory创建出一个map
 		Map<Object, Object> map = CollectionFactory
 				.createMap((target.getValue() != null) ? Map.class : target.getType().resolve(Object.class), 0);
+		// 解析bindable，如果发现bindable的resolvableType的resolved字段是Properties的话，
+		// 那么返回STRING_STRING_MAP，否则返回原对象
 		Bindable<?> resolvedTarget = resolveTarget(target);
+		// 判断sources中是否有name的子属性
 		boolean hasDescendants = hasDescendants(name);
+		// 遍历ConfigurationPropertySource集合
 		for (ConfigurationPropertySource source : getContext().getSources()) {
+			// 如果name不等于Empty的ConfigurationPropertyName的话
 			if (!ConfigurationPropertyName.EMPTY.equals(name)) {
+				// 从source中根据name获取ConfigurationProperty
 				ConfigurationProperty property = source.getConfigurationProperty(name);
+				// 如果property不为null，并且没有子属性的话
 				if (property != null && !hasDescendants) {
+					// 将property的value转换为target返回
 					return getContext().getConverter().convert(property.getValue(), target);
 				}
+				// 否则的话，将source转换为FilteredConfigurationPropertiesSource类型，
+				// 筛选条件： name是ConfigurationPropertyName的祖先属性
 				source = source.filter(name::isAncestorOf);
 			}
+			// 根据参数创建一个EntryBinder来进行绑定
 			new EntryBinder(name, resolvedTarget, elementBinder).bindEntries(source, map);
 		}
 		return map.isEmpty() ? null : map;
@@ -150,7 +162,9 @@ class MapBinder extends AggregateBinder<Map<Object, Object>> {
 
 		void bindEntries(ConfigurationPropertySource source, Map<Object, Object> map) {
 			if (source instanceof IterableConfigurationPropertySource) {
+				// 循环遍历所有是root的子属性的属性name
 				for (ConfigurationPropertyName name : (IterableConfigurationPropertySource) source) {
+					// 获取到value的bindable
 					Bindable<?> valueBindable = getValueBindable(name);
 					ConfigurationPropertyName entryName = getEntryName(source, name);
 					Object key = getContext().getConverter().convert(getKeyName(entryName), this.keyType);
@@ -160,14 +174,18 @@ class MapBinder extends AggregateBinder<Map<Object, Object>> {
 		}
 
 		private Bindable<?> getValueBindable(ConfigurationPropertyName name) {
+			// 如果name的size不止比root多1的话 并且 valueType的resolved字段是Object.class，
+			// 说明value可能是嵌套的map，因此返回mapType的bindable
 			if (!this.root.isParentOf(name) && isValueTreatedAsNestedMap()) {
 				return Bindable.of(this.mapType);
 			}
+			// 否则返回valueType的bindable
 			return Bindable.of(this.valueType);
 		}
 
 		private ConfigurationPropertyName getEntryName(ConfigurationPropertySource source,
 				ConfigurationPropertyName name) {
+			// 获取valueType的resolved字段
 			Class<?> resolved = this.valueType.resolve(Object.class);
 			if (Collection.class.isAssignableFrom(resolved) || this.valueType.isArray()) {
 				return chopNameAtNumericIndex(name);
