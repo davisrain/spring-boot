@@ -162,20 +162,23 @@ class MapBinder extends AggregateBinder<Map<Object, Object>> {
 
 		void bindEntries(ConfigurationPropertySource source, Map<Object, Object> map) {
 			if (source instanceof IterableConfigurationPropertySource) {
-				// 循环遍历所有是root的子属性的属性name
+				// 循环遍历所有是root子属性的属性name
 				for (ConfigurationPropertyName name : (IterableConfigurationPropertySource) source) {
 					// 获取到value的bindable
 					Bindable<?> valueBindable = getValueBindable(name);
+					// 获取到entry的name
 					ConfigurationPropertyName entryName = getEntryName(source, name);
+					// 获取keyName并且转换为keyType类型
 					Object key = getContext().getConverter().convert(getKeyName(entryName), this.keyType);
+					// 然后如果map中不存在key的话，调用elementBinder的bind方法进行绑定并放入map中
 					map.computeIfAbsent(key, (k) -> this.elementBinder.bind(entryName, valueBindable));
 				}
 			}
 		}
 
 		private Bindable<?> getValueBindable(ConfigurationPropertyName name) {
-			// 如果name的size不止比root多1的话 并且 valueType的resolved字段是Object.class，
-			// 说明value可能是嵌套的map，因此返回mapType的bindable
+			// 如果name的size不止比root多1 并且 valueType的resolved字段是Object.class的话，
+			// 说明value可能是嵌套的map，因此返回mapType的bindable。
 			if (!this.root.isParentOf(name) && isValueTreatedAsNestedMap()) {
 				return Bindable.of(this.mapType);
 			}
@@ -187,10 +190,13 @@ class MapBinder extends AggregateBinder<Map<Object, Object>> {
 				ConfigurationPropertyName name) {
 			// 获取valueType的resolved字段
 			Class<?> resolved = this.valueType.resolve(Object.class);
+			// 如果value是Collection类型的或者是数组类型的，调用chopNameAtNumericIndex方法对name进行处理并返回
 			if (Collection.class.isAssignableFrom(resolved) || this.valueType.isArray()) {
 				return chopNameAtNumericIndex(name);
 			}
+			// 如果root不是name的父属性，即name比root多不止一个element 并且 (valueType对应的是Object.class或者name对应的属性值不是标量值)
 			if (!this.root.isParentOf(name) && (isValueTreatedAsNestedMap() || !isScalarValue(source, name))) {
+				// 将name截取到root的size+1的位置
 				return name.chop(this.root.getNumberOfElements() + 1);
 			}
 			return name;
@@ -199,8 +205,11 @@ class MapBinder extends AggregateBinder<Map<Object, Object>> {
 		private ConfigurationPropertyName chopNameAtNumericIndex(ConfigurationPropertyName name) {
 			int start = this.root.getNumberOfElements() + 1;
 			int size = name.getNumberOfElements();
+			// 从root的size+1开始，一直遍历到name的size
 			for (int i = start; i < size; i++) {
+				// 如果发现name在下标i的位置的element是NumericIndex类型的，
 				if (name.isNumericIndex(i)) {
+					// 直接将name截取到该位置返回
 					return name.chop(i);
 				}
 			}
@@ -213,24 +222,31 @@ class MapBinder extends AggregateBinder<Map<Object, Object>> {
 
 		private boolean isScalarValue(ConfigurationPropertySource source, ConfigurationPropertyName name) {
 			Class<?> resolved = this.valueType.resolve(Object.class);
+			// 如果valueType对应的类不是以java.lang开头的(比如String和所有基础类型的包装类型) 并且 不是枚举，返回false，说明不是标量值
 			if (!resolved.getName().startsWith("java.lang") && !resolved.isEnum()) {
 				return false;
 			}
+			// 如果source中不存在name对应的属性，返回false
 			ConfigurationProperty property = source.getConfigurationProperty(name);
 			if (property == null) {
 				return false;
 			}
+			// 否则获取到属性的值
 			Object value = property.getValue();
 			value = getContext().getPlaceholdersResolver().resolvePlaceholders(value);
+			// 并且判断转换器是否能够转换
 			return getContext().getConverter().canConvert(value, this.valueType);
 		}
 
 		private String getKeyName(ConfigurationPropertyName name) {
 			StringBuilder result = new StringBuilder();
+			// 从root的size的位置，遍历到name的size-1的位置
 			for (int i = this.root.getNumberOfElements(); i < name.getNumberOfElements(); i++) {
+				// 如果result中已经有值了，每次将元素添加进result前需要添加一个.
 				if (result.length() != 0) {
 					result.append('.');
 				}
+				// 将element以original的形式添加进元素，会保留大小写字母，数字，下划线以及破折号
 				result.append(name.getElement(i, Form.ORIGINAL));
 			}
 			return result.toString();
