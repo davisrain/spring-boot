@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
+import liquibase.pro.packaged.M;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
 import org.mockito.ArgumentCaptor;
@@ -77,6 +78,16 @@ class MapBinderTests {
 	private final List<ConfigurationPropertySource> sources = new ArrayList<>();
 
 	private Binder binder = new Binder(this.sources);
+
+	@Test
+	void bindToMapWithUserValue() {
+		MapConfigurationPropertySource cps = new MapConfigurationPropertySource();
+		cps.put("foo.bar.name", "daizhengyu");
+		cps.put("foo.bar.age", 18);
+		sources.add(cps);
+		BindResult<Map<String, BinderTests.User>> map = this.binder.bind("foo", Bindable.of(ResolvableType.forClassWithGenerics(Map.class, String.class, BinderTests.User.class)));
+		System.out.println(map.get().get("bar").toString());
+	}
 
 	@Test
 	void bindToMapShouldReturnPopulatedMap() {
