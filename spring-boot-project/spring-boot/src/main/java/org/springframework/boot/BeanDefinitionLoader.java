@@ -124,6 +124,7 @@ class BeanDefinitionLoader {
 	 */
 	int load() {
 		int count = 0;
+		// 遍历其持有的sources，调用load的重载方法
 		for (Object source : this.sources) {
 			count += load(source);
 		}
@@ -132,6 +133,7 @@ class BeanDefinitionLoader {
 
 	private int load(Object source) {
 		Assert.notNull(source, "Source must not be null");
+		// 判断source的类型，调用load的重载方法
 		if (source instanceof Class<?>) {
 			return load((Class<?>) source);
 		}
@@ -148,12 +150,16 @@ class BeanDefinitionLoader {
 	}
 
 	private int load(Class<?> source) {
+		// 判断groovy是否存在 以及 source是否是属于GroovyBeanDefinitionSource，
+		// 如果是的话，加载用groovy语言声明的BeanDefinition
 		if (isGroovyPresent() && GroovyBeanDefinitionSource.class.isAssignableFrom(source)) {
 			// Any GroovyLoaders added in beans{} DSL can contribute beans here
 			GroovyBeanDefinitionSource loader = BeanUtils.instantiateClass(source, GroovyBeanDefinitionSource.class);
 			load(loader);
 		}
+		// 判断source是否是合格的，即如果 不是匿名类 并且 不是groovy闭包 并且 有构造函数，那么就是合格的。
 		if (isEligible(source)) {
+			// 将source注册到annotatedBeanDefinitionReader中
 			this.annotatedReader.register(source);
 			return 1;
 		}

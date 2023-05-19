@@ -67,21 +67,32 @@ class SpringApplicationBannerPrinter {
 	}
 
 	Banner print(Environment environment, Class<?> sourceClass, PrintStream out) {
+		// 获取Banner
 		Banner banner = getBanner(environment);
+		// 调用banner的打印方法 默认实现是SpringBootBanner类，打印逻辑就是往控制台输出一段字符串
 		banner.printBanner(environment, sourceClass, out);
+		// 用banner和sourceClass封装一个已经打印过的Banner对象返回
 		return new PrintedBanner(banner, sourceClass);
 	}
 
 	private Banner getBanner(Environment environment) {
+		// 创建一个Banners，用于存储加载到的各种banner
 		Banners banners = new Banners();
+		// 尝试获取image类型的banner，获取spring.banner.image.location的属性值，如果存在，尝试去加载指定的resource
+		// 如果没有加载到，尝试去加载以图片后缀结尾的banner文件，如果都没有加载到，返回null
 		banners.addIfNotNull(getImageBanner(environment));
+		// 尝试加载文件类型的banner，获取spring.banner.location的属性值，如果存在，尝试去加载指定的resource
+		// 如果没有加载到，尝试去加载banner.txt文件，如果都没有加载到，返回null
 		banners.addIfNotNull(getTextBanner(environment));
+		// 判断banners中是否至少有一个banner，如果有的话，返回banners
 		if (banners.hasAtLeastOneBanner()) {
 			return banners;
 		}
+		// 否则查看fallbackBanner是否为null，如果不是，返回fallbackBanner
 		if (this.fallbackBanner != null) {
 			return this.fallbackBanner;
 		}
+		// 上述步骤都没有获取到banner，那么返回默认的banner
 		return DEFAULT_BANNER;
 	}
 
