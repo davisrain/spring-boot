@@ -296,13 +296,16 @@ public class SpringApplication {
 	 * @return a running {@link ApplicationContext}
 	 */
 	public ConfigurableApplicationContext run(String... args) {
+		// 创建一个计时器
 		StopWatch stopWatch = new StopWatch();
+		// 记录计时器的任务名和开始时间
 		stopWatch.start();
 		ConfigurableApplicationContext context = null;
 		configureHeadlessProperty();
 		// 获取spring应用的运行监听器，从spring.factories中获取，默认只有一个EventPublishingRunListener，
 		// 用于将spring应用启动中的事件推送给各个ApplicationListener(已经在SpringApplication的构造函数中从spring.factories中获取了)
 		SpringApplicationRunListeners listeners = getRunListeners(args);
+		// 发送starting通知
 		listeners.starting();
 		try {
 			// 根据启动时传入的参数生成一个DefaultApplicationArguments对象，
@@ -319,13 +322,18 @@ public class SpringApplication {
 			context = createApplicationContext();
 			// 准备上下文
 			prepareContext(context, environment, listeners, applicationArguments, printedBanner);
+			// 刷新上下文，这个方法是IOC容器最重要的方法
 			refreshContext(context);
+			// 待实现的钩子函数
 			afterRefresh(context, applicationArguments);
+			// 计时器停止，记录任务的运行时间以及总运行时间，并将任务名称置为null，执行过的任务数+1
 			stopWatch.stop();
 			if (this.logStartupInfo) {
 				new StartupInfoLogger(this.mainApplicationClass).logStarted(getApplicationLog(), stopWatch);
 			}
+			// 发送started通知
 			listeners.started(context);
+			// 调用实现了CommandLineRunner和ApplicationRunner的bean实例的run方法，将应用启动参数对象ApplicationArguments传入
 			callRunners(context, applicationArguments);
 		}
 		catch (Throwable ex) {
@@ -842,9 +850,13 @@ public class SpringApplication {
 
 	private void callRunners(ApplicationContext context, ApplicationArguments args) {
 		List<Object> runners = new ArrayList<>();
+		// 从ioc容器中取出实现了ApplicationRunner接口的bean
 		runners.addAll(context.getBeansOfType(ApplicationRunner.class).values());
+		// 从ioc容器中取出实现了CommandLineRunner接口的bean
 		runners.addAll(context.getBeansOfType(CommandLineRunner.class).values());
+		// 根据@Ordered注解或实现了PriorityOrdered接口的进行排序
 		AnnotationAwareOrderComparator.sort(runners);
+		// 然后根据类型分别调用callRunner的不同重载方法
 		for (Object runner : new LinkedHashSet<>(runners)) {
 			if (runner instanceof ApplicationRunner) {
 				callRunner((ApplicationRunner) runner, args);
@@ -857,6 +869,7 @@ public class SpringApplication {
 
 	private void callRunner(ApplicationRunner runner, ApplicationArguments args) {
 		try {
+			// 如果是ApplicationRunner类型的，调用其run方法时传入ApplicationArguments对象
 			(runner).run(args);
 		}
 		catch (Exception ex) {
@@ -866,6 +879,7 @@ public class SpringApplication {
 
 	private void callRunner(CommandLineRunner runner, ApplicationArguments args) {
 		try {
+			// 如果是CommandLineRunner类型的，调用其run方法时传入的是String[]类型的启动参数
 			(runner).run(args.getSourceArgs());
 		}
 		catch (Exception ex) {
