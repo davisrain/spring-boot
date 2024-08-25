@@ -91,11 +91,15 @@ public abstract class AutoConfigurationPackages {
 	 * @param packageNames the package names to set
 	 */
 	public static void register(BeanDefinitionRegistry registry, String... packageNames) {
+		// 如果registry中已经存在name为AutoConfigurationPackages全限定名的bd了，那么获取其ConstructorArgumentValues，
+		// 将刚解析出来的packageNames添加到原本的集合中去
 		if (registry.containsBeanDefinition(BEAN)) {
 			BeanDefinition beanDefinition = registry.getBeanDefinition(BEAN);
 			ConstructorArgumentValues constructorArguments = beanDefinition.getConstructorArgumentValues();
 			constructorArguments.addIndexedArgumentValue(0, addBasePackages(constructorArguments, packageNames));
 		}
+		// 如果不存在的话，创建一个bd注册进registry，beanClass为BasePackages，beanName为AutoConfigurationPackages类的全限定，
+		// 里面会有一个属性用于保存自动配置的包名集合
 		else {
 			GenericBeanDefinition beanDefinition = new GenericBeanDefinition();
 			beanDefinition.setBeanClass(BasePackages.class);
@@ -121,6 +125,7 @@ public abstract class AutoConfigurationPackages {
 
 		@Override
 		public void registerBeanDefinitions(AnnotationMetadata metadata, BeanDefinitionRegistry registry) {
+			// 然后调用register方法，将autoConfiguration的包名数组传入
 			register(registry, new PackageImports(metadata).getPackageNames().toArray(new String[0]));
 		}
 
@@ -141,6 +146,7 @@ public abstract class AutoConfigurationPackages {
 		PackageImports(AnnotationMetadata metadata) {
 			AnnotationAttributes attributes = AnnotationAttributes
 					.fromMap(metadata.getAnnotationAttributes(AutoConfigurationPackage.class.getName(), false));
+			// 根据@AutoConfigurationPackage注解的basePackages属性和basePackageClasses属性获取包名集合
 			List<String> packageNames = new ArrayList<>();
 			for (String basePackage : attributes.getStringArray("basePackages")) {
 				packageNames.add(basePackage);
@@ -148,9 +154,11 @@ public abstract class AutoConfigurationPackages {
 			for (Class<?> basePackageClass : attributes.getClassArray("basePackageClasses")) {
 				packageNames.add(basePackageClass.getPackage().getName());
 			}
+			// 如果没有获取到的话，添加@AutoConfigurationPackage注解标注的类的包
 			if (packageNames.isEmpty()) {
 				packageNames.add(ClassUtils.getPackageName(metadata.getClassName()));
 			}
+			// 然后设置为packageNames属性
 			this.packageNames = Collections.unmodifiableList(packageNames);
 		}
 

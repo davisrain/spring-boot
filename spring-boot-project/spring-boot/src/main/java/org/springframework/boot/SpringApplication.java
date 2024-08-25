@@ -267,10 +267,15 @@ public class SpringApplication {
 	public SpringApplication(ResourceLoader resourceLoader, Class<?>... primarySources) {
 		this.resourceLoader = resourceLoader;
 		Assert.notNull(primarySources, "PrimarySources must not be null");
+		// 设置primarySources
 		this.primarySources = new LinkedHashSet<>(Arrays.asList(primarySources));
+		// 根据classpath里面存在的类推断web的类型是reative还是servlet还是none
 		this.webApplicationType = WebApplicationType.deduceFromClasspath();
+		// 从spring.factories中加载ApplicationContextInitilizer设置到springApplication中
 		setInitializers((Collection) getSpringFactoriesInstances(ApplicationContextInitializer.class));
+		// 从spring.factories中加载ApplicationListener设置到springApplication中
 		setListeners((Collection) getSpringFactoriesInstances(ApplicationListener.class));
+		// 根据异常栈帧判断main方法的类
 		this.mainApplicationClass = deduceMainApplicationClass();
 	}
 
@@ -295,6 +300,31 @@ public class SpringApplication {
 	 * @param args the application arguments (usually passed from a Java main method)
 	 * @return a running {@link ApplicationContext}
 	 */
+	// 1.从spring.factories中实例化SpringApplicationRunListener，封装成SpringApplicationRunListeners，
+	// 默认只有一个EventPublishingRunListener，实现逻辑就是使用一个ApplicationEventMulticaster将事件发送给各个ApplicationListener。
+	// 其中接受事件的ApplicationListener也是在SpringApplication的构造函数中从spring.factories加载来的。
+	// 紧接着推送starting事件
+	// 2.解析传入的命令行参数为ApplicationArguments对象
+	// 3.创建和准备Environment，这里会推送environmentPrepared事件。
+	// note：在这一步ConfigFileApplicationListener会监听到事件，进行springboot配置文件的解析
+	// 4.打印banner，将打印过的banner封装成PrintedBanner对象返回
+	// 5.创建ApplicationContext
+	// 6.准备上下文prepareContext:
+	// 6.1 将environment设置进ApplicationContext中
+	// 6.2 对ApplicationContext进行后置处理，尝试设置resourceLoader beanNameGenerator conversionService
+	// 6.3 应用所有在SpringApplication的构造函数中从spring.factories加载出来的ApplicationContextInitializer给ApplicationContext
+	// 6.4 推送contextPrepared事件
+	// 6.5 将applicationArguments printedBanner注册进beanFactory的单例中
+	// 6.6 通过BeanDefinitionLoader加载SpringApplication里面的primarySources和sources为beanDefinition到beanFactory中，这个关键的一步将SpringApplication
+	// 构造函数里面传入的primarySources给加载为beanDefinition了，以便于在ConfigurationClassPostProcessor解析的时候beanFactory里存在可以解析的ConfigurationClass
+	// 6.7 推送contextLoaded事件，loaded事件之后，会将SpringApplication里面所持有的ApplicationListener都添加到ApplicationContext中，后续的事件推送
+	// 也就会使用context来推送了，因为context实现了ApplicationEventPublisher接口，并且自身属性里面也维护了一个ApplicationEventMulticaster
+	// 7.刷新refreshContext，注册一个Runtime的ShutdownHook，用于在jvm关闭之前关闭applicationContext，并且调用ApplicationContext的最重要的refresh方法
+	// 8.调用afterRefresh方法，模板方法，待子类实现
+	// 9.推送started事件
+	// 10.调用beanFactory里面实现了ApplicationRunner和CommandLineRunner接口的run方法，
+	// 其中ApplicationRunner传入的是ApplicationArguments，CommandLineRunner传入的是原始的命令行参数
+	// 11.推送running事件
 	public ConfigurableApplicationContext run(String... args) {
 		// 创建一个计时器
 		StopWatch stopWatch = new StopWatch();
@@ -354,7 +384,7 @@ public class SpringApplication {
 	private ConfigurableEnvironment prepareEnvironment(SpringApplicationRunListeners listeners,
 			ApplicationArguments applicationArguments) {
 		// Create and configure the environment
-		// 创建环境对象environment，如果是sevlet应用，创建的是StandardServletEnvironment
+		// 创建环境对象environment，如果是servlet应用，创建的是StandardServletEnvironment
 		// environment对象会持有所有的propertySource，在AbstractEnvironment的构造方法中会调用customizePropertySources方法，
 		// 该方法会初始化一系列的propertySource放入environment中，其中就包括System.getProperties()和System.getEnv(),
 		// 分别会初始化为PropertiesPropertySource以及SystemEnvironmentPropertySource；
@@ -465,8 +495,11 @@ public class SpringApplication {
 	private <T> Collection<T> getSpringFactoriesInstances(Class<T> type, Class<?>[] parameterTypes, Object... args) {
 		ClassLoader classLoader = getClassLoader();
 		// Use names and ensure unique to protect against duplicates
+		// 从META-INF/spring.factories中获取到对应类型下面的所有实现类的全限定名
 		Set<String> names = new LinkedHashSet<>(SpringFactoriesLoader.loadFactoryNames(type, classLoader));
+		// 然后根据实现类的全限定名实例化这些对象
 		List<T> instances = createSpringFactoriesInstances(type, parameterTypes, classLoader, args, names);
+		// 根据Order进行排序，返回返回实例化后的对象集合
 		AnnotationAwareOrderComparator.sort(instances);
 		return instances;
 	}
