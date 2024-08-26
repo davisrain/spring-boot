@@ -116,17 +116,35 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 	 * @return the auto-configurations that should be imported
 	 */
 	protected AutoConfigurationEntry getAutoConfigurationEntry(AnnotationMetadata annotationMetadata) {
+		// 如果spring.boot.enableautoconfiguration参数配置的值为false，直接返回一个空的AutoConfigurationEntity
 		if (!isEnabled(annotationMetadata)) {
 			return EMPTY_ENTRY;
 		}
+		// 获取注解的属性
 		AnnotationAttributes attributes = getAttributes(annotationMetadata);
+		// 获取spring.factories文件里面key为EnableAutoConfiguration注解类的全限定名的所有类名集合
 		List<String> configurations = getCandidateConfigurations(annotationMetadata, attributes);
+		// 去除掉重复的候选类名
 		configurations = removeDuplicates(configurations);
+		// 获取要exclude类名集合
+		// 1.根据注解的exclude属性排除
+		// 2.根据注解的excludeName属性排除
+		// 3.读取environment里面spring.autoconfigure.exclude属性配置的类名
 		Set<String> exclusions = getExclusions(annotationMetadata, attributes);
+		// 检查要exclude的类名集合
+		// 如果要exclude类存在并且候选类名集合里面不包含该类，那么认为该exclusion是invalid，
+		// 整合所有invalid的exclusion，抛出异常，因此要exclude的类名需要确保是存在且是在候选类集合中的
 		checkExcludedClasses(configurations, exclusions);
+		// 从候选集合中删除需要exclude的类
 		configurations.removeAll(exclusions);
+		// 然后根据ConfigurationClassFilter再对候选集合过滤一遍
+		// ConfigurationClassFilter的过滤能力是通过spring.factories里面配置的AutoConfigurationImportFilter类型来实现的
+		// 过滤逻辑就是遍历ConfigurationClassFilter持有的AutoConfigurationImportFilter的match方法获得匹配数组结果，
+		// 如果match数组的对应下标是false，需要将候选集合的对应位置置为null
 		configurations = getConfigurationClassFilter().filter(configurations);
+		// 推送AutoConfigurationImportEvent事件给spring.factories里面配置的AutoConfigurationImportListener类型的监听器
 		fireAutoConfigurationImportEvents(configurations, exclusions);
+		// 然后将候选集合 和 exclusions集合封装成一个AutoConfigurationEntry返回
 		return new AutoConfigurationEntry(configurations, exclusions);
 	}
 
@@ -175,6 +193,7 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 	 * @return a list of candidate configurations
 	 */
 	protected List<String> getCandidateConfigurations(AnnotationMetadata metadata, AnnotationAttributes attributes) {
+		// 获取spring.factories里面EnableAutoConfiguration注解类全限定名下的所有类名集合
 		List<String> configurations = SpringFactoriesLoader.loadFactoryNames(getSpringFactoriesLoaderFactoryClass(),
 				getBeanClassLoader());
 		Assert.notEmpty(configurations, "No auto configuration classes found in META-INF/spring.factories. If you "
@@ -227,8 +246,10 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 	 */
 	protected Set<String> getExclusions(AnnotationMetadata metadata, AnnotationAttributes attributes) {
 		Set<String> excluded = new LinkedHashSet<>();
+		// 根据注解的exclude属性和excludeName属性来排除
 		excluded.addAll(asList(attributes, "exclude"));
 		excluded.addAll(Arrays.asList(attributes.getStringArray("excludeName")));
+		// 根据配置参数来排除
 		excluded.addAll(getExcludeAutoConfigurationsProperty());
 		return excluded;
 	}
@@ -244,11 +265,14 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 		if (environment == null) {
 			return Collections.emptyList();
 		}
+		// 如果environment是ConfigurableEnvironment类型的
 		if (environment instanceof ConfigurableEnvironment) {
+			// 获取spring.autoconfigure.exclude属性配置的值转换为list返回
 			Binder binder = Binder.get(environment);
 			return binder.bind(PROPERTY_NAME_AUTOCONFIGURE_EXCLUDE, String[].class).map(Arrays::asList)
 					.orElse(Collections.emptyList());
 		}
+		// 如果不是，直接调用getProperty房啊获取spring.autoconfigure.exclude属性的值返回
 		String[] excludes = environment.getProperty(PROPERTY_NAME_AUTOCONFIGURE_EXCLUDE, String[].class);
 		return (excludes != null) ? Arrays.asList(excludes) : Collections.emptyList();
 	}
@@ -259,10 +283,13 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 
 	private ConfigurationClassFilter getConfigurationClassFilter() {
 		if (this.configurationClassFilter == null) {
+			// 从spring.factories文件里面加载AutoConfigurationImportFilter类型的filter集合
 			List<AutoConfigurationImportFilter> filters = getAutoConfigurationImportFilters();
+			// 然后遍历调用invokeAware方法，将aware相关的属性注入
 			for (AutoConfigurationImportFilter filter : filters) {
 				invokeAwareMethods(filter);
 			}
+			// 然后将加载到的filter集合封装成一个ConfigurationClassFilter对象返回
 			this.configurationClassFilter = new ConfigurationClassFilter(this.beanClassLoader, filters);
 		}
 		return this.configurationClassFilter;
@@ -278,10 +305,13 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 	}
 
 	private void fireAutoConfigurationImportEvents(List<String> configurations, Set<String> exclusions) {
+		// 从spring.factories中获取AutoConfigurationImportListener类型的实例集合
 		List<AutoConfigurationImportListener> listeners = getAutoConfigurationImportListeners();
 		if (!listeners.isEmpty()) {
+			// 如果不为空，构建一个AutoConfigurationImportEvent事件对象，然后遍历推送给所有的监听器
 			AutoConfigurationImportEvent event = new AutoConfigurationImportEvent(this, configurations, exclusions);
 			for (AutoConfigurationImportListener listener : listeners) {
+				// 为监听器注入aware相关的属性
 				invokeAwareMethods(listener);
 				listener.onAutoConfigurationImportEvent(event);
 			}
@@ -358,26 +388,39 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 		private final List<AutoConfigurationImportFilter> filters;
 
 		ConfigurationClassFilter(ClassLoader classLoader, List<AutoConfigurationImportFilter> filters) {
+			// 根据classloader生成一个autoConfigurationMetadata，
+			// 即去加载所有的META-INF/spring-autoconfigure-metadata.properties位置的配置文件，
+			// 生成Properties对象封装成PropertiesAutoConfigurationMetadata返回
 			this.autoConfigurationMetadata = AutoConfigurationMetadataLoader.loadMetadata(classLoader);
 			this.filters = filters;
 		}
 
 		List<String> filter(List<String> configurations) {
 			long startTime = System.nanoTime();
+			// 将候选的配置类转换为数组
 			String[] candidates = StringUtils.toStringArray(configurations);
 			boolean skipped = false;
+			// 遍历持有的AutoConfigurationImportFilter，依次对候选数组进行match匹配操作
 			for (AutoConfigurationImportFilter filter : this.filters) {
+				// 得到一个match结果数组
 				boolean[] match = filter.match(candidates, this.autoConfigurationMetadata);
+				// 遍历结果数组
 				for (int i = 0; i < match.length; i++) {
+					// 如果对应位置的匹配结果是false
 					if (!match[i]) {
+						// 将候选数组的对应位置置为null
 						candidates[i] = null;
+						// 并且将skipped属性设置为true
 						skipped = true;
 					}
 				}
 			}
+			// 遍历过滤完成后，检查skipped属性是否是false。
+			// false代表，没有因为过滤跳过任何一个候选类，直接返回原始传入的集合即可
 			if (!skipped) {
 				return configurations;
 			}
+			// 否则，存在因为过滤而跳过的候选类，遍历候选数组，将null的都剔除，生成一个新的候选集合返回
 			List<String> result = new ArrayList<>(candidates.length);
 			for (String candidate : candidates) {
 				if (candidate != null) {
@@ -430,9 +473,13 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 					() -> String.format("Only %s implementations are supported, got %s",
 							AutoConfigurationImportSelector.class.getSimpleName(),
 							deferredImportSelector.getClass().getName()));
+			// 调用每个AutoConfigurationImportSelector的getAutoConfigurationEntry方法获取包含有候选类集合 和 exclusions集合的entry对象
 			AutoConfigurationEntry autoConfigurationEntry = ((AutoConfigurationImportSelector) deferredImportSelector)
 					.getAutoConfigurationEntry(annotationMetadata);
+			// 将entry对象添加到group的autoConfigurationEntries集合中持有
 			this.autoConfigurationEntries.add(autoConfigurationEntry);
+			// 然后获取entry里面的候选集合进行遍历，将遍历出的要导入的类名作为key，导入该类的类的annotationMetadata作为value存入到
+			// group的entries属性中
 			for (String importClassName : autoConfigurationEntry.getConfigurations()) {
 				this.entries.putIfAbsent(importClassName, annotationMetadata);
 			}
@@ -440,16 +487,21 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 
 		@Override
 		public Iterable<Entry> selectImports() {
+			// 如果autoConfigurationEntries集合为空的话，直接返回空集合
 			if (this.autoConfigurationEntries.isEmpty()) {
 				return Collections.emptyList();
 			}
+			// 获取autoConfigurationEntries中所有被exclude的类名集合，整合为一个set
 			Set<String> allExclusions = this.autoConfigurationEntries.stream()
 					.map(AutoConfigurationEntry::getExclusions).flatMap(Collection::stream).collect(Collectors.toSet());
+			// 获取autoConfigurationEntries中的所有候选类名集合，整合为一个set
 			Set<String> processedConfigurations = this.autoConfigurationEntries.stream()
 					.map(AutoConfigurationEntry::getConfigurations).flatMap(Collection::stream)
 					.collect(Collectors.toCollection(LinkedHashSet::new));
+			// 从候选集合里面删除exclusions集合的内容
 			processedConfigurations.removeAll(allExclusions);
 
+			// 排序之后进行遍历，映射为group的entry集合返回给DeferredImportSelectorGroupingHandler进行处理
 			return sortAutoConfigurations(processedConfigurations, getAutoConfigurationMetadata()).stream()
 					.map((importClassName) -> new Entry(this.entries.get(importClassName), importClassName))
 					.collect(Collectors.toList());
@@ -457,6 +509,8 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 
 		private AutoConfigurationMetadata getAutoConfigurationMetadata() {
 			if (this.autoConfigurationMetadata == null) {
+				// 加载META-INF/spring-autoconfigure-metadata.properties路径下的所有properties文件整个为一个Properties对象，
+				// 封装在一个PropertiesAutoConfigurationMetadata里面
 				this.autoConfigurationMetadata = AutoConfigurationMetadataLoader.loadMetadata(this.beanClassLoader);
 			}
 			return this.autoConfigurationMetadata;
@@ -464,11 +518,14 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 
 		private List<String> sortAutoConfigurations(Set<String> configurations,
 				AutoConfigurationMetadata autoConfigurationMetadata) {
+			// 根据metadataReaderFactory和autoConfigurationMetadata创建一个AutoConfigurationSorter对要自动装配的候选类进行排序，
+			// 即根据@AutoConfigurationOrder @AutoConfigurationBefore @AutoConfigurationAfter等注解进行排序
 			return new AutoConfigurationSorter(getMetadataReaderFactory(), autoConfigurationMetadata)
 					.getInPriorityOrder(configurations);
 		}
 
 		private MetadataReaderFactory getMetadataReaderFactory() {
+			// 尝试从beanFactory里面获取一个CachingMetadataReaderFactory，如果没有获取到，就根据resourceLoader创建一个
 			try {
 				return this.beanFactory.getBean(SharedMetadataReaderFactoryContextInitializer.BEAN_NAME,
 						MetadataReaderFactory.class);

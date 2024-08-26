@@ -74,6 +74,7 @@ final class AutoConfigurationMetadataLoader {
 
 		@Override
 		public boolean wasProcessed(String className) {
+			// 如果properties存在className的key，返回true，表示该class已经被处理过
 			return this.properties.containsKey(className);
 		}
 
@@ -106,6 +107,7 @@ final class AutoConfigurationMetadataLoader {
 
 		@Override
 		public String get(String className, String key, String defaultValue) {
+			// 获取属性的key为className + . + key
 			String value = this.properties.getProperty(className + "." + key);
 			return (value != null) ? value : defaultValue;
 		}
