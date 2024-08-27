@@ -79,31 +79,49 @@ class AutoConfigurationSorter {
 	}
 
 	private List<String> sortByAnnotation(AutoConfigurationClasses classes, List<String> classNames) {
+		// 根据传入的classNames生成一个新的list，表示需要去排序的集合
 		List<String> toSort = new ArrayList<>(classNames);
+		// 获取classes中存在的所有AutoConfigurationClass的className，添加到需要去排序的集合。
+		// 这一步可能会导致toSort集合里有重复的className
 		toSort.addAll(classes.getAllNames());
 		Set<String> sorted = new LinkedHashSet<>();
 		Set<String> processing = new LinkedHashSet<>();
+		// 创建两个set用于辅助排序，当toSort不为空时，循环进行排序
 		while (!toSort.isEmpty()) {
 			doSortByAfterAnnotation(classes, toSort, sorted, processing, null);
 		}
+		// 只保留排序后的set里面等同于classNames的元素
 		sorted.retainAll(classNames);
+		// 将排序后的set转换为list返回
 		return new ArrayList<>(sorted);
 	}
 
 	private void doSortByAfterAnnotation(AutoConfigurationClasses classes, List<String> toSort, Set<String> sorted,
 			Set<String> processing, String current) {
+		// 如果当前元素为null的话，获取要排序的list的第一个元素作为当前元素
 		if (current == null) {
 			current = toSort.remove(0);
 		}
+		// 将当前元素添加进processingSet，表示正在对这个元素进行处理
 		processing.add(current);
+		// 获取到当前元素需要在哪些类装配之后才能装配的集合，进行遍历
+		// 满足条件的：
+		// 1.通过current对应的AutoConfigurationClass的AutoConfigurationAfter获取
+		// 2.以及其他AutoConfigurationClass的AutoConfigurationBefore包含了current的那些class
 		for (String after : classes.getClassesRequestedAfter(current)) {
+			// 如果processingSet里面包含了本次循环的after，说明存在自动装配先后顺序的环，报错
 			Assert.state(!processing.contains(after),
 					"AutoConfigure cycle detected between " + current + " and " + after);
+			// 如果sortedSet不包含after 并且 toSort集合包含after，
+			// 表示after需要排序但还没有排序
 			if (!sorted.contains(after) && toSort.contains(after)) {
+				// 递归解析after，找到after需要在哪些类装配结束之后再进行装配
 				doSortByAfterAnnotation(classes, toSort, sorted, processing, after);
 			}
 		}
+		// 将当前元素从processingSet中删除，表示不在处理中了
 		processing.remove(current);
+		// 然后将当前元素添加进sortedSet，表示已经排序
 		sorted.add(current);
 	}
 
@@ -155,12 +173,18 @@ class AutoConfigurationSorter {
 		}
 
 		Set<String> getClassesRequestedAfter(String className) {
+			// 获取className对应的AutoConfigurationClass对象，然后获取它的AutoConfigurationAfter的类名集合。
+			// 表示当前className需要在哪些类自动装配之后才能装配
 			Set<String> classesRequestedAfter = new LinkedHashSet<>(get(className).getAfter());
+			// 然后遍历所有的AutoConfigurationClass，如果某个class的AutoConfigurationBefore包含了当前className，
+			// 说明该class需要在className装配之前进行自动装配，换言之，className需要在该class装配之后进行装配，
+			// 所以该class也应该添加到className的after集合里
 			this.classes.forEach((name, autoConfigurationClass) -> {
 				if (autoConfigurationClass.getBefore().contains(className)) {
 					classesRequestedAfter.add(name);
 				}
 			});
+			// 返回after集合
 			return classesRequestedAfter;
 		}
 
