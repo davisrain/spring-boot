@@ -84,29 +84,44 @@ class OnBeanCondition extends FilteringSpringBootCondition implements Configurat
 	@Override
 	protected final ConditionOutcome[] getOutcomes(String[] autoConfigurationClasses,
 			AutoConfigurationMetadata autoConfigurationMetadata) {
+		// 根据自动装配候选类的数组的长度创建一个对应长度的ConditionOutcome数组
 		ConditionOutcome[] outcomes = new ConditionOutcome[autoConfigurationClasses.length];
+		// 进行遍历
 		for (int i = 0; i < outcomes.length; i++) {
+			// 获取对应的autoConfigurationClass
 			String autoConfigurationClass = autoConfigurationClasses[i];
+			// 如果不为null
 			if (autoConfigurationClass != null) {
+				// 从autoConfigurationMetadata中获取autoConfigurationClass对应的ConditionalOnBean属性
 				Set<String> onBeanTypes = autoConfigurationMetadata.getSet(autoConfigurationClass, "ConditionalOnBean");
+				// 然后根据onBeanTypes集合和@ConditionalOnBean注解类型获取一个ConditionOutcome存入数组的指定下标
 				outcomes[i] = getOutcome(onBeanTypes, ConditionalOnBean.class);
+				// 如果对应下标的ConditionOutcome对象为null，继续判断metadata中的ConditionalOnSingleCandidate属性
 				if (outcomes[i] == null) {
 					Set<String> onSingleCandidateTypes = autoConfigurationMetadata.getSet(autoConfigurationClass,
 							"ConditionalOnSingleCandidate");
+					// 再将结果赋值给outcomes数组的对应下标
 					outcomes[i] = getOutcome(onSingleCandidateTypes, ConditionalOnSingleCandidate.class);
 				}
 			}
 		}
+		// 然后返回outcomes数组
 		return outcomes;
 	}
 
 	private ConditionOutcome getOutcome(Set<String> requiredBeanTypes, Class<? extends Annotation> annotation) {
+		// 根据要求的bean类型数组 获取到其中没办法加载到的类名集合
 		List<String> missing = filter(requiredBeanTypes, ClassNameFilter.MISSING, getBeanClassLoader());
+		// 如果missing集合不为空的话
 		if (!missing.isEmpty()) {
+			// 创建一个ConditionMessage，整个构建出来的ConditionMessage里面的message的内容示例：
+			// @ConditionalOnBean did not find required types 'xxx', 'xxx', 'xxx'
 			ConditionMessage message = ConditionMessage.forCondition(annotation)
 					.didNotFind("required type", "required types").items(Style.QUOTE, missing);
+			// 然后调用ConditionOutcome的noMatch方法返回一个ConditionOutcome对象
 			return ConditionOutcome.noMatch(message);
 		}
+		// 如果不存在加载不到的类，返回null
 		return null;
 	}
 

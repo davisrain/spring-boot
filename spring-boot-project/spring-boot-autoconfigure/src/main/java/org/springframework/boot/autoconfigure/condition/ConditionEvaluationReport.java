@@ -80,11 +80,15 @@ public final class ConditionEvaluationReport {
 		Assert.notNull(source, "Source must not be null");
 		Assert.notNull(condition, "Condition must not be null");
 		Assert.notNull(outcome, "Outcome must not be null");
+		// 将source从unconditonalClasses里面删除
 		this.unconditionalClasses.remove(source);
+		// 如果outcomes里面不包含source的key，创建一个ConditionAndOutcomes对象作为value存入
 		if (!this.outcomes.containsKey(source)) {
 			this.outcomes.put(source, new ConditionAndOutcomes());
 		}
+		// 向ConditionAndOutcomes添加condition和outcome封装成的ConditionAndOutcome对象
 		this.outcomes.get(source).add(condition, outcome);
+		// 将addedAncestorOutcomes属性设置为false
 		this.addedAncestorOutcomes = false;
 	}
 

@@ -46,13 +46,20 @@ abstract class FilteringSpringBootCondition extends SpringBootCondition
 	@Override
 	public boolean[] match(String[] autoConfigurationClasses, AutoConfigurationMetadata autoConfigurationMetadata) {
 		ConditionEvaluationReport report = ConditionEvaluationReport.find(this.beanFactory);
+		// 获取对应的ConditionOutcome数组
 		ConditionOutcome[] outcomes = getOutcomes(autoConfigurationClasses, autoConfigurationMetadata);
 		boolean[] match = new boolean[outcomes.length];
+		// 遍历outcomes数组
 		for (int i = 0; i < outcomes.length; i++) {
+			// 如果对应下标的ConditionOutcome为null或者match属性为true，将对应match数组的元素设置为true
 			match[i] = (outcomes[i] == null || outcomes[i].isMatch());
+			// 如果对应位置的match数组的值为false，且对应下标的ConditionOutcome不为null
 			if (!match[i] && outcomes[i] != null) {
+				// 打印日志
 				logOutcome(autoConfigurationClasses[i], outcomes[i]);
+				// 如果ConditionEvaluationReport不为null
 				if (report != null) {
+					// 记录ConditionOutcome的结果
 					report.recordConditionEvaluation(autoConfigurationClasses[i], this, outcomes[i]);
 				}
 			}
@@ -83,15 +90,21 @@ abstract class FilteringSpringBootCondition extends SpringBootCondition
 
 	protected final List<String> filter(Collection<String> classNames, ClassNameFilter classNameFilter,
 			ClassLoader classLoader) {
+		// 如果classNames为空或者为null，返回一个空集合
 		if (CollectionUtils.isEmpty(classNames)) {
 			return Collections.emptyList();
 		}
+		// 否则创建一个数组表示匹配结果
 		List<String> matches = new ArrayList<>(classNames.size());
+		// 遍历classNames
 		for (String candidate : classNames) {
+			// 调用classNameFilter匹配每个候选的类名
 			if (classNameFilter.matches(candidate, classLoader)) {
+				// 如果匹配成功，加入到结果集合中
 				matches.add(candidate);
 			}
 		}
+		// 返回结果集合
 		return matches;
 	}
 
@@ -116,6 +129,7 @@ abstract class FilteringSpringBootCondition extends SpringBootCondition
 
 			@Override
 			public boolean matches(String className, ClassLoader classLoader) {
+				// 尝试根据类名是否能加载到对应的类
 				return isPresent(className, classLoader);
 			}
 
@@ -125,6 +139,7 @@ abstract class FilteringSpringBootCondition extends SpringBootCondition
 
 			@Override
 			public boolean matches(String className, ClassLoader classLoader) {
+				// 尝试根据类名是否没法加载到对应的类
 				return !isPresent(className, classLoader);
 			}
 
