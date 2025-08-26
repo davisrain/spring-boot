@@ -16,11 +16,6 @@
 
 package org.springframework.boot.context.properties;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
-
 import org.springframework.beans.BeansException;
 import org.springframework.beans.PropertyEditorRegistry;
 import org.springframework.beans.factory.BeanFactory;
@@ -48,6 +43,11 @@ import org.springframework.core.convert.ConversionService;
 import org.springframework.core.env.PropertySources;
 import org.springframework.validation.Validator;
 import org.springframework.validation.annotation.Validated;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
  * Internal class used by the {@link ConfigurationPropertiesBindingPostProcessor} to
@@ -78,15 +78,22 @@ class ConfigurationPropertiesBinder {
 
 	ConfigurationPropertiesBinder(ApplicationContext applicationContext) {
 		this.applicationContext = applicationContext;
+		// 从applicationContext中推测出需要用到的PropertySources
 		this.propertySources = new PropertySourcesDeducer(applicationContext).getPropertySources();
+		// 从ioc容器中获取ConfigurationProperties用到的Validator
 		this.configurationPropertiesValidator = getConfigurationPropertiesValidator(applicationContext);
+		// 判断jsr303相关的校验类是否存在
 		this.jsr303Present = ConfigurationPropertiesJsr303Validator.isJsr303Present(applicationContext);
 	}
 
 	BindResult<?> bind(ConfigurationPropertiesBean propertiesBean) {
+		// 获取bindable
 		Bindable<?> target = propertiesBean.asBindTarget();
+		// 获取@ConfigurationProperties注解
 		ConfigurationProperties annotation = propertiesBean.getAnnotation();
+		// 获取装饰后的bindHandler
 		BindHandler bindHandler = getBindHandler(target, annotation);
+		// 获取binder，对bindable执行bind方法
 		return getBinder().bind(annotation.prefix(), target, bindHandler);
 	}
 
@@ -105,18 +112,24 @@ class ConfigurationPropertiesBinder {
 	}
 
 	private <T> BindHandler getBindHandler(Bindable<T> target, ConfigurationProperties annotation) {
+		// 获取validator集合
 		List<Validator> validators = getValidators(target);
+		// 获取bindHandler
 		BindHandler handler = getHandler();
+		// 如果忽略非法的字段，使用IgnoreErrorBindHandler来装饰
 		if (annotation.ignoreInvalidFields()) {
 			handler = new IgnoreErrorsBindHandler(handler);
 		}
+		// 如果不忽略不认识的字段，使用NoUnboundElementsBindHandler来装饰
 		if (!annotation.ignoreUnknownFields()) {
 			UnboundElementsSourceFilter filter = new UnboundElementsSourceFilter();
 			handler = new NoUnboundElementsBindHandler(handler, filter);
 		}
+		// 如果validator集合不为空，使用ValidationBindHandler来装饰
 		if (!validators.isEmpty()) {
 			handler = new ValidationBindHandler(handler, validators.toArray(new Validator[0]));
 		}
+		// 如果存在bindHandler的切面，对handler进行增强
 		for (ConfigurationPropertiesBindHandlerAdvisor advisor : getBindHandlerAdvisors()) {
 			handler = advisor.apply(handler);
 		}
@@ -125,6 +138,7 @@ class ConfigurationPropertiesBinder {
 
 	private IgnoreTopLevelConverterNotFoundBindHandler getHandler() {
 		BoundConfigurationProperties bound = BoundConfigurationProperties.get(this.applicationContext);
+		// 如果BoundConfigurationProperties存在，将其add方法作为参数以装饰器模式的方式构建bindHandler
 		return (bound != null)
 				? new IgnoreTopLevelConverterNotFoundBindHandler(new BoundPropertiesTrackingBindHandler(bound::add))
 				: new IgnoreTopLevelConverterNotFoundBindHandler();
@@ -132,12 +146,15 @@ class ConfigurationPropertiesBinder {
 
 	private List<Validator> getValidators(Bindable<?> target) {
 		List<Validator> validators = new ArrayList<>(3);
+		// 如果ConfigurationPropertiesValidator不为null，添加进集合
 		if (this.configurationPropertiesValidator != null) {
 			validators.add(this.configurationPropertiesValidator);
 		}
+		// 如果jsr303的类存在，且目标上标注了@Validated注解，添加jsr303的validator到集合中
 		if (this.jsr303Present && target.getAnnotation(Validated.class) != null) {
 			validators.add(getJsr303Validator());
 		}
+		// 如果bindable持有的value就是validator，那么也添加进集合中
 		if (target.getValue() != null && target.getValue().get() instanceof Validator) {
 			validators.add((Validator) target.getValue().get());
 		}
@@ -185,12 +202,14 @@ class ConfigurationPropertiesBinder {
 	}
 
 	static void register(BeanDefinitionRegistry registry) {
+		// 将ConfigurationPropertiesBinder的Factory作为bean注册进ioc
 		if (!registry.containsBeanDefinition(FACTORY_BEAN_NAME)) {
 			GenericBeanDefinition definition = new GenericBeanDefinition();
 			definition.setBeanClass(ConfigurationPropertiesBinder.Factory.class);
 			definition.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
 			registry.registerBeanDefinition(ConfigurationPropertiesBinder.FACTORY_BEAN_NAME, definition);
 		}
+		// 将ConfigurationPropertiesBinder注册进ioc，通过factoryMethod的方法来实例化
 		if (!registry.containsBeanDefinition(BEAN_NAME)) {
 			GenericBeanDefinition definition = new GenericBeanDefinition();
 			definition.setBeanClass(ConfigurationPropertiesBinder.class);

@@ -16,11 +16,8 @@
 
 package org.springframework.boot.context.properties;
 
-import java.util.Map;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.core.env.ConfigurableEnvironment;
@@ -28,6 +25,8 @@ import org.springframework.core.env.Environment;
 import org.springframework.core.env.MutablePropertySources;
 import org.springframework.core.env.PropertySources;
 import org.springframework.util.Assert;
+
+import java.util.Map;
 
 /**
  * Utility to deduce the {@link PropertySources} to use for configuration binding.
@@ -49,6 +48,7 @@ class PropertySourcesDeducer {
 		if (configurer != null) {
 			return configurer.getAppliedPropertySources();
 		}
+		// 从applicationContext的environment中获取propertySources
 		MutablePropertySources sources = extractEnvironmentPropertySources();
 		Assert.state(sources != null,
 				"Unable to obtain PropertySources from PropertySourcesPlaceholderConfigurer or Environment");

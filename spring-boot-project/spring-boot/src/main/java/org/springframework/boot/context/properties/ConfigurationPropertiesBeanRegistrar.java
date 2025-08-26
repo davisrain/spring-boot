@@ -55,8 +55,13 @@ final class ConfigurationPropertiesBeanRegistrar {
 	}
 
 	void register(Class<?> type, MergedAnnotation<ConfigurationProperties> annotation) {
+		// 获取要注册的类的beanName
+		// 1.如果类上标注了@ConfigurationProperties注解，且注解设置了prefix属性，那么beanName为prefix-${className}
+		// 2.否则就为className
 		String name = getName(type, annotation);
+		// 判断ioc中是否已经存在对应的beanDefinition
 		if (!containsBeanDefinition(name)) {
+			// 注册beanDefinition到ioc中
 			registerBeanDefinition(name, type, annotation);
 		}
 	}
@@ -82,16 +87,21 @@ final class ConfigurationPropertiesBeanRegistrar {
 	}
 
 	private void registerBeanDefinition(String beanName, Class<?> type,
-			MergedAnnotation<ConfigurationProperties> annotation) {
+										MergedAnnotation<ConfigurationProperties> annotation) {
 		Assert.state(annotation.isPresent(), () -> "No " + ConfigurationProperties.class.getSimpleName()
 				+ " annotation found on  '" + type.getName() + "'.");
 		this.registry.registerBeanDefinition(beanName, createBeanDefinition(beanName, type));
 	}
 
 	private BeanDefinition createBeanDefinition(String beanName, Class<?> type) {
+		// 判断绑定类型
+		// 1.如果存在标注了@ConstructorBinding注解的构造器，或者类上标注了@ConstructorBinding注解，且只有一个有参构造器，那么是VALUE_OBJECT类型的
+		// 2.否则是JAVA_BEAN类型
 		if (BindMethod.forType(type) == BindMethod.VALUE_OBJECT) {
+			// 如果是VALUE_OBJECT类型，使用特殊的beanDefinition，走instanceSupplier的方式去实例化
 			return new ConfigurationPropertiesValueObjectBeanDefinition(this.beanFactory, beanName, type);
 		}
+		// 如果是JAVA_BEAN类型，走常规的bean的实例化，通过bpp进行绑定操作
 		GenericBeanDefinition definition = new GenericBeanDefinition();
 		definition.setBeanClass(type);
 		return definition;

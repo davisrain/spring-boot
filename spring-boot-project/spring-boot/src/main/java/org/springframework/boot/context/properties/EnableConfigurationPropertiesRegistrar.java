@@ -16,14 +16,14 @@
 
 package org.springframework.boot.context.properties;
 
-import java.util.Arrays;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
 import org.springframework.core.annotation.MergedAnnotation;
 import org.springframework.core.type.AnnotationMetadata;
+
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * {@link ImportBeanDefinitionRegistrar} for
@@ -35,8 +35,11 @@ class EnableConfigurationPropertiesRegistrar implements ImportBeanDefinitionRegi
 
 	@Override
 	public void registerBeanDefinitions(AnnotationMetadata metadata, BeanDefinitionRegistry registry) {
+		// 注册一些ConfigurationProperties需要用到的基础的bean到ioc中
 		registerInfrastructureBeans(registry);
+		// 创建一个注册ConfigurationPropertiesBean的注册器
 		ConfigurationPropertiesBeanRegistrar beanRegistrar = new ConfigurationPropertiesBeanRegistrar(registry);
+		// 遍历标注@EnableConfigurationProperites注解的value属性中的类，依次通过注册器注册进ioc
 		getTypes(metadata).forEach(beanRegistrar::register);
 	}
 
@@ -48,6 +51,8 @@ class EnableConfigurationPropertiesRegistrar implements ImportBeanDefinitionRegi
 
 	@SuppressWarnings("deprecation")
 	static void registerInfrastructureBeans(BeanDefinitionRegistry registry) {
+		// 注册bpp，用于对ConfigurationProperties对象进行增强，即将配置和bean的实例属性进行绑定
+		// 注册ConfigurationPropertiesBinder进ioc
 		ConfigurationPropertiesBindingPostProcessor.register(registry);
 		BoundConfigurationProperties.register(registry);
 		ConfigurationBeanFactoryMetadata.register(registry);

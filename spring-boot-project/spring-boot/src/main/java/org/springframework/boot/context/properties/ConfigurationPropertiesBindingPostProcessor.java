@@ -80,15 +80,17 @@ public class ConfigurationPropertiesBindingPostProcessor
 	}
 
 	private void bind(ConfigurationPropertiesBean bean) {
+		// 如果不是被@ConfigurationProperties标注的bean 或者 ioc中有通过构造器来bind的beanDefinition，那么不进行属性绑定操作，直接返回
 		if (bean == null || hasBoundValueObject(bean.getName())) {
 			return;
 		}
+		// 确认只有JAVA_BEAN类型的绑定才会走这段逻辑
 		Assert.state(bean.getBindMethod() == BindMethod.JAVA_BEAN, "Cannot bind @ConfigurationProperties for bean '"
 				+ bean.getName() + "'. Ensure that @ConstructorBinding has not been applied to regular bean");
 		try {
+			// 执行具体的绑定逻辑
 			this.binder.bind(bean);
-		}
-		catch (Exception ex) {
+		} catch (Exception ex) {
 			throw new ConfigurationPropertiesBindException(bean, ex);
 		}
 	}
@@ -101,6 +103,7 @@ public class ConfigurationPropertiesBindingPostProcessor
 	/**
 	 * Register a {@link ConfigurationPropertiesBindingPostProcessor} bean if one is not
 	 * already registered.
+	 *
 	 * @param registry the bean definition registry
 	 * @since 2.2.0
 	 */
